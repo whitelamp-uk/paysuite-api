@@ -1,0 +1,5 @@
+
+ALTER TABLE `paysuite_collection`
+ADD `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY FIRST
+;
+
