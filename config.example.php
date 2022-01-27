@@ -2,6 +2,7 @@
 
 define ( 'BLOTTO_PAY_API_PST',          '/some/paysuite-api/PayApi.php'   );
 define ( 'BLOTTO_PAY_API_PST_CLASS',    '\Blotto\Paysuite\PayApi'         );
+define ( 'PST_CODE',                    'PST'                             );
 define ( 'PST_USER',                    'my_paysuite_api'                 );
 define ( 'PST_PASSWORD',                '**********'                      );
 define ( 'PST_ERROR_LOG',               false                             );
