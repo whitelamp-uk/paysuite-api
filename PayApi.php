@@ -7,13 +7,13 @@ class PayApi {
     private  $bogon_file;
     private  $connection;
     public   $constants = [
-                 'PST_ERROR_LOG',
-                 'PST_USER',
-                 'PST_PASSWORD',
-                 'PST_PAY_INTERVAL',
-                 'PST_FILE_DEBOGON',
-                 'PST_TABLE_COLLECTION',
-                 'PST_TABLE_MANDATE'
+                'PST_URL',
+                'PST_API_KEY',
+                'PST_ERROR_LOG',
+                'PST_FILE_DEBOGON',
+                'PST_PAY_INTERVAL',
+                'PST_TABLE_MANDATE',
+                'PST_TABLE_COLLECTION',
              ];
     public   $database;
     public   $diagnostic;
@@ -28,6 +28,129 @@ class PayApi {
     }
 
     public function __destruct ( ) {
+    }
+
+    private function curl_delete ($path,$options=[]) {
+    /*
+        * Send a DELETE request using cURL
+        * @param string $path to request
+        * @return string
+    */
+        if (!is_array($options)) {
+            throw new \Exception ('Params and option arguments must be arrays');
+            return false;
+        }
+        $options += [
+            CURLOPT_CUSTOMREQUEST => 'DELETE'
+        ];
+        $result = $this->curl_function($path, $options);
+        return $result;
+    }
+
+    // errors look like {"ErrorCode":7,"Detail":null,"Message":"API not enabled"}
+    private function curl_function ($path,$options=[]) {
+    /*
+        * Send a generic request using cURL
+        * @param string $path to request
+        * @param array $options for cURL
+        * @return string
+    */
+        $url = PST_URL.$path;
+        $headers = [
+            'Accept: application/json',
+            'apiKey: '.PST_API_KEY,
+            //'Content-Type: application/x-www-form-urlencoded', //application/json',
+            'Content-Type: application/json', 
+
+        ];
+        $defaults = [
+            CURLOPT_HEADER => 0,
+            CURLOPT_URL => $url,
+            CURLOPT_FRESH_CONNECT => 1,
+            CURLOPT_RETURNTRANSFER => 1,
+            CURLOPT_FORBID_REUSE => 1,
+            CURLOPT_TIMEOUT => 45,
+            CURLOPT_HTTPHEADER => $headers,
+            //CURLOPT_HEADER => true,
+            CURLINFO_HEADER_OUT => true,
+        ];
+        $ch = curl_init ();
+        curl_setopt_array ($ch,$options+$defaults);
+
+        if (!$result=curl_exec($ch)) {
+            $this->error_log (125,curl_error($ch));
+            throw new \Exception ("cURL error ".print_r(curl_error($ch), true));
+            return false;
+        }
+        $outHeaders = explode("\n", curl_getinfo($ch, CURLINFO_HEADER_OUT));
+        $outHeaders = array_filter($outHeaders, function($value) { return $value !== '' && $value !== ' ' && strlen($value) != 1; });
+        //print_r($outHeaders);
+        curl_close ($ch);
+        return json_decode($result);
+    }
+
+    private function curl_get ($path,$params=[],$options=[]) {
+    /*
+        * Send a GETT request using cURL
+        * @param string $path to request
+        * @param array $params query string parameters (in form "foo"=>"bar")
+        * @param array $options for cURL
+        * @return string
+    */
+        if (!is_array($params) || !is_array($options)) {
+            throw new \Exception ('Params and option arguments must be arrays');
+            return false;
+        }
+        if (count($params)) {
+            $path .= '?'.http_build_query($params);
+        }
+        $result = $this->curl_function($path, $options);
+        return $result;
+    }
+
+
+    // borrowed from rsm-api
+    private function curl_patch ($path,$post,$options=[]) {
+    /*
+        * Send a POST requst using cURL
+        * @param string $path to request
+        * @param array $post values to send
+        * @param array $options for cURL
+        * @return string
+    */
+        if (!is_array($post) || !is_array($options)) {
+            throw new \Exception ('Post and option arguments must be arrays');
+            return false;
+        }
+        $post_options = array (
+            CURLOPT_CUSTOMREQUEST => 'PATCH',
+            CURLOPT_POSTFIELDS => json_encode ($post)
+        );
+        $options += $post_options;
+        $result = $this->curl_function($path, $options);
+        return $result;
+    }
+
+    private function curl_post ($path,$post,$options=[]) {
+    /*
+        * Send a POST requst using cURL
+        * @param string $path to request
+        * @param array $post values to send
+        * @param array $options for cURL
+        * @return string
+    */
+        if (!is_array($post) || !is_array($options)) {
+            throw new \Exception ('Post and option arguments must be arrays');
+            return false;
+        }
+        $post_options = array (
+            CURLOPT_POST => true,
+            //CURLOPT_POSTFIELDS => http_build_query ($post, null, '&', PHP_QUERY_RFC3986)
+            CURLOPT_POSTFIELDS => json_encode ($post)
+        );
+        $options += $post_options;
+        $result = $this->curl_function($path, $options);
+        return $result;
     }
 
     private function error_log ($code,$message) {
@@ -54,7 +177,17 @@ class PayApi {
         return $output;
     }
 
+    private function get_bacs_endpoints () {
+        foreach (['customer', 'contract', 'payment', 'schedule'] as $entity) {
+            $endpoints[$entity] = $this->curl_get('BACS/'.$entity.'/callback');
+        }
+        print_r($endpoints);
+        return $endpoints;
+    }
+
     public function import ($start_date,$rowsm=0,$rowsc=0) {
+        $this->test_customer();
+        return;
         $this->execute (__DIR__.'/create_collection.sql');
         $this->execute (__DIR__.'/create_mandate.sql');
         // Go get mandate and collection data
@@ -170,6 +303,55 @@ $ok = false;
             throw new \Exception ('SQL insert error');
             return false;
         }
+    }
+
+    private function test_callback() {
+        $r = $this->curl_get('BACS/contract/callback');
+        echo "\nget: ";print_r($r);
+        $r = $this->curl_post('BACS/contract/callback', ['url' => 'http://foobar.com']);
+        echo "\npost: ";print_r($r);
+        $r = $this->curl_get('BACS/contract/callback');
+        echo "\nget: ";print_r($r);
+        $r = $this->curl_delete('BACS/contract/callback');
+        echo "\ndelete: ";print_r($r);
+        $r = $this->curl_get('BACS/contract/callback');
+        echo "\n5get: ";print_r($r);
+    }
+
+    private function test_customer() {
+        $details = [
+            "Email" => "john.doe@test.com",
+            "Title" => "Mr",
+            "CustomerRef" => "Y99999",
+            "FirstName" => "John",
+            "Surname" => "Doe",
+            "Line1" => "1 Tebbit Mews",
+            "Line2" => "Winchcombe Street",
+            "PostCode" => "GL52 2NF",
+            "AccountNumber" => "12345678",
+            "BankSortCode" => "123456",
+            "AccountHolderName" => "Mr John Doe"
+        ];
+
+
+        $patchdetails = [
+            "AccountNumber" => "82345678",
+            "BankSortCode" => "823456",
+        ];
+
+
+        //$r = $this->curl_post('customer', $details);
+        //echo "\npatch: ";print_r($r);
+
+        $r = $this->curl_delete('customer/798e5d5c-c4a8-4375-9a42-06a8002110ed');
+        echo "\ndelete: ";print_r($r);
+
+        $r = $this->curl_patch('customer/3a02c36f-65dd-4569-ad7f-f7d420d56cdd', $patchdetails);
+        echo "\npatch: ";print_r($r);
+
+        $r = $this->curl_get('customer');
+        echo "\nget: ";print_r($r); // ->Customers[2]
+
     }
 
 }
