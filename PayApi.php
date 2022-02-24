@@ -59,8 +59,8 @@ class PayApi {
         $headers = [
             'Accept: application/json',
             'apiKey: '.PST_API_KEY,
-            //'Content-Type: application/x-www-form-urlencoded', //application/json',
-            'Content-Type: application/json', 
+            'Content-Type: application/x-www-form-urlencoded', //application/json',
+            //'Content-Type: application/json', 
 
         ];
         $defaults = [
@@ -124,9 +124,10 @@ class PayApi {
         }
         $post_options = array (
             CURLOPT_CUSTOMREQUEST => 'PATCH',
-            CURLOPT_POSTFIELDS => json_encode ($post)
+            //CURLOPT_POSTFIELDS => json_encode ($post)
         );
         $options += $post_options;
+        $path .= '?'.http_build_query($post);
         $result = $this->curl_function($path, $options);
         return $result;
     }
@@ -145,10 +146,11 @@ class PayApi {
         }
         $post_options = array (
             CURLOPT_POST => true,
-            //CURLOPT_POSTFIELDS => http_build_query ($post, null, '&', PHP_QUERY_RFC3986)
-            CURLOPT_POSTFIELDS => json_encode ($post)
+            //CURLOPT_POSTFIELDS => http_build_query ($post, null, '&', PHP_QUERY_RFC3986) // this was no good
+            //CURLOPT_POSTFIELDS => json_encode ($post) // this was better until I tried to set the callback URL
         );
         $options += $post_options;
+        $path .= '?'.http_build_query($post); // so sheesh, even POST needs to be a query string...
         $result = $this->curl_function($path, $options);
         return $result;
     }
@@ -186,7 +188,9 @@ class PayApi {
     }
 
     public function import ($start_date,$rowsm=0,$rowsc=0) {
-        $this->test_customer();
+        //$this->test_customer();
+        //$this->test_callback();
+        $this->test_schedule();
         return;
         $this->execute (__DIR__.'/create_collection.sql');
         $this->execute (__DIR__.'/create_mandate.sql');
@@ -407,7 +411,7 @@ $ok = false;
 
 
         $patchdetails = [
-            "AccountNumber" => "82345678",
+            "AccountNumber" => "82345671",
             "BankSortCode" => "823456",
         ];
 
@@ -424,6 +428,11 @@ $ok = false;
         $r = $this->curl_get('customer');
         echo "\nget: ";print_r($r); // ->Customers[2]
 
+    }
+
+    private function test_schedule() {
+        $r = $this->curl_get('schedules');
+        echo "\nget: ";print_r($r);
     }
 
 }
