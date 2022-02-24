@@ -200,7 +200,79 @@ class PayApi {
         $this->output_collections ();
     }
 
+    private function insert_mandate ($m)  {
+        $customer_guid = $this->insert_customer ($m);
+        $contract_guid = $this->insert_contract ($m);
+        $sql = "
+          UPDATE `paysuite_mandate`
+          SET
+            `CustomerGuid`='$customer_guid'
+            `ContractGuid`='$contract_guid'
+            WHERE `ClientRef`='{$m['ClientRef']}'
+            LIMIT 1
+          ;
+        ";
+        try {
+            $result = $this->connection->query ($sql);
+            if ($this->connection->affected_rows!=1) {
+                $this->error_log (126,"API update mandate '{$m['ClientRef']}' - no affected rows");
+                throw new \Exception ("API update mandate '{$m['ClientRef']}' - no affected rows");
+                return false;
+            }
+        }
+        catch (\mysqli_sql_exception $e) {
+            $this->error_log (125,"API update mandate '{$m['ClientRef']}' failed: ".$e->getMessage());
+            throw new \Exception ("API update mandate '{$m['ClientRef']}' failed: ".$e->getMessage());
+            return false;
+        }
+    }
+
     public function insert_mandates ($mandates)  {
+        foreach ($mandates as $m) {
+            $sql = "
+                SELECT
+                  *
+                FROM `paysuite_mandate`
+                WHERE
+                    `ClientRef`='{$m['ClientRef']}'
+                LIMIT 0,1
+            ";
+            try {
+                $result = $this->connection->query ($sql);
+                if ($result->num_rows==0) {
+                    $start_date = collection_startdate (date('Y-m-d'),$m['PayDay']);
+                    $sql = "
+                      INSERT IGNORE INTO `paysuite_mandate`
+                      SET
+                        `ClientRef`='{$m['ClientRef']}'
+                       ,`Name`='{$m['Name']}'
+                       ,`Sortcode`='{$m['SortCode']}'
+                       ,`Account`='{$m['Account']}'
+                       ,`StartDate`='$start_date'
+                       ,`Freq`='{$m['Freq']}'
+                       ,`Amount`='{$m['Amount']}'
+                       ,`ChancesCsv`='{$m['Chances']}'
+                      ;
+                    ";
+                    echo $sql."\n";
+                    $this->connection->query ($sql);
+                    try {
+                        $this->insert_mandate ($m);
+                    }
+                    catch (\Exception $e) {
+                        $this->error_log (125,'API insert mandate failed: '.$e->getMessage());
+                        throw new \Exception ('API insert mandate failed: '.$e->getMessage());
+                        return false;
+                    }
+                }
+            }
+            catch (\mysqli_sql_exception $e) {
+                $this->error_log (124,'SQL insert failed: '.$e->getMessage());
+                throw new \Exception ('SQL insert failed: '.$e->getMessage());
+                return false;
+            }
+        }
+
 // Make sure this bit does not work for now
 fwrite (STDERR,"insert_mandates() has chickened out\n");
 return true;

@@ -3,6 +3,7 @@
 define ( 'BLOTTO_PAY_API_PST',          '/some/paysuite-api/PayApi.php'   );
 define ( 'BLOTTO_PAY_API_PST_CLASS',    '\Blotto\Paysuite\PayApi'         );
 
+define ( 'PST_CODE',                    'PST' );
 define ( 'PST_LIVE_URL',                'https://ecm3.eazycollect.co.uk/api/v3/client/client_code/' );
 define ( 'PST_TEST_URL',                'https://ecm3.eazycollect.co.uk/api/v3/client/client_code/' );
 define ( 'PST_URL',                     PST_TEST_URL                      );

@@ -1,19 +1,20 @@
 
-
-DROP TABLE IF EXISTS `paysuite_collection`;
-
-CREATE TABLE `paysuite_collection` (
-  `ClientRef` varchar(255) CHARACTER SET ascii DEFAULT NULL,
-  `DDRefOrig` varchar(64) CHARACTER SET ascii DEFAULT NULL,
+CREATE TABLE IF NOT EXISTS `paysuite_collection` (
+  `CollectionId` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `CollectionCreated` timestamp DEFAULT CURRENT_TIMESTAMP,
+  `PaymentGuid` char(64) CHARACTER SET ascii DEFAULT NULL,
+  `DDRefOrig` bigint(20) unsigned NOT NULL,
+  `ClientRef` char(64) CHARACTER SET ascii DEFAULT NULL,
   `DateDue` date DEFAULT NULL,
   `Amount` decimal(10,2) DEFAULT NULL,
-  `PayStatus` varchar(255) CHARACTER SET ascii DEFAULT NULL,
-  `PaidAmount` decimal (10,2) DEFAULT NULL,
-  KEY `DDRefOrig` (`DDRefOrig`),
-  KEY `ClientRef` (`ClientRef`),
+  PRIMARY KEY (`CollectionId`),
+  UNIQUE KEY `PaymentGuid` (`PaymentGuid`),
+  UNIQUE KEY `DDRefOrig` (`DDRefOrig`),
+  UNIQUE KEY `ClientRef` (`ClientRef`),
+  KEY `CollectionCreated` (`CollectionCreated`),
   KEY `DateDue` (`DateDue`),
   KEY `Amount` (`Amount`),
-  KEY `PayStatus` (`PayStatus`)
+  CONSTRAINT `paysuite_collection_ibfk_1` FOREIGN KEY (`ClientRef`) REFERENCES `paysuite_mandate` (`ClientRef`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
 ;
 

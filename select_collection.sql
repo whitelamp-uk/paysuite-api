@@ -1,16 +1,16 @@
+
 -- Must be a single select query
 SELECT
-  -- Or whatever column names are used in Paysuiteland
   `DateDue`
  ,'PST'
  ,null
  ,`DDRefOrig`
  ,`ClientRef`
- ,`PaidAmount`
-FROM `rsm_collection`
-WHERE `DateDue`<DATE_SUB(CURDATE(),INTERVAL {{RSM_PAY_INTERVAL}})
-  AND `PayStatus`='PAID'
+ ,`Amount`
+FROM `paysuite_collection`
+WHERE `DateDue`<DATE_SUB(CURDATE(),INTERVAL {{PST_PAY_INTERVAL}})
   AND `Amount`>0
+GROUP BY `DDRefOrig`
 ORDER BY `DateDue`,`DDRefOrig`
 ;
 

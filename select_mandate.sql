@@ -1,9 +1,28 @@
+
 -- Must be a single select query
 SELECT
-  '{{PAYSUITE_CODE}}',
-  *
+  'PST'
+ ,null
+ ,`DDRefOrig`
+ ,`ClientRef`
+ ,`MandateCreated`
+ ,`Updated`
+ ,`StartDate`
+ ,`Status`
+ ,`Freq`
+ ,`Amount`
+ ,`ChancesCsv`
+ ,`Name`
+ ,`Sortcode`
+ ,`Account`
+ ,`FailReason`
+ ,`MandateId`
+ ,1
+ ,`MandateCreated`
+ ,`StartDate`
 FROM `paysuite_mandate`
 WHERE 1
-GROUP BY `DDRefOrig`
-ORDER BY `DDRefOrig`
+GROUP BY `MandateId`
+ORDER BY `MandateId`
 ;
+
