@@ -91,7 +91,7 @@ class PayApi {
 
     private function curl_get ($path,$params=[],$options=[]) {
     /*
-        * Send a GETT request using cURL
+        * Send a GET request using cURL
         * @param string $path to request
         * @param array $params query string parameters (in form "foo"=>"bar")
         * @param array $options for cURL
@@ -109,7 +109,6 @@ class PayApi {
     }
 
 
-    // borrowed from rsm-api
     private function curl_patch ($path,$post,$options=[]) {
     /*
         * Send a POST requst using cURL
@@ -165,55 +164,112 @@ class PayApi {
     }
 
     private function execute ($sql_file) {
-        echo file_get_contents ($sql_file);
-        exec (
-            'mariadb '.escapeshellarg($this->database).' < '.escapeshellarg($sql_file),
-            $output,
-            $status
-        );
-        if ($status>0) {
-            $this->error_log (127,$sql_file.' '.implode(' ',$output));
-            throw new \Exception ("SQL file '$sql_file' execution error");
+        $sql = file_get_contents ($sql_file);
+        try {
+            $result = $this->connection->query ($sql);
+        }
+        catch (\mysqli_sql_exception $e) {
+            $this->error_log (126,'SQL execute failed: '.$e->getMessage());
+            throw new \Exception ('SQL execution error');
             return false;
         }
-        return $output;
+        return $result;
     }
 
-    private function get_bacs_endpoints () {
+    private function fetch_collections ($m) {
+// TODO: this is where top down should meet bottom up eg return value:
+        $collections = [
+            [
+                'payment_guid' => 'abc-xyz',
+                'date_collected' => '2022-02-01',
+                'amount' => 4.34
+            ]
+        ];
+        return $collections;
+    }
+
+// TODO: an old development test or needed?
+    private function get_bacs_endpoints ( ) {
         foreach (['customer', 'contract', 'payment', 'schedule'] as $entity) {
-            $endpoints[$entity] = $this->curl_get('BACS/'.$entity.'/callback');
+            $endpoints[$entity] = $this->curl_get ('BACS/'.$entity.'/callback');
         }
-        print_r($endpoints);
+        print_r ($endpoints);
         return $endpoints;
     }
 
-    public function import ($start_date,$rowsm=0,$rowsc=0) {
-        //$this->test_customer();
-        //$this->test_callback();
-        $this->test_schedule();
-        return;
-        $this->execute (__DIR__.'/create_collection.sql');
-        $this->execute (__DIR__.'/create_mandate.sql');
-        // Go get mandate and collection data
-        // Store in paysuite_mandate and paysuite_collection
-        // Use $this->table_load()
-        // Set any indexing
-        $this->table_alter ('paysuite_collection');
-        $this->table_alter ('paysuite_mandate');
+    public function import ( ) {
+//$this->test_customer();
+//$this->test_callback();
+$this->test_schedule ();
+return;
+        // Get all the mandates
+        $sql = "
+          SELECT
+           ,`ContractGuid`
+           ,`ClientRef`
+          FROM `paysuite_mandate`
+          ORDER BY `MandateId`
+        ";
+        try {
+            $result = $this->connection->query ($sql);
+            while ($m=$result->fetch_assoc()) {
+                // Insert recent collections for this mandate
+                $this->insert_collections ($m);
+            }
+        }
+        catch (\mysqli_sql_exception $e) {
+            $this->error_log (126,'SQL execute failed: '.$e->getMessage());
+            throw new \Exception ('SQL execution error');
+            return false;
+        }
         $this->output_mandates ();
         $this->output_collections ();
     }
 
+    private function insert_collections ($m)  {
+        // The remote bit
+        $collections = $this->fetch_collections ($m);
+        // The local bit
+        foreach ($collections as $c) {
+            // Payment GUID is unique so insert-ignore seems like a good idea
+            $sql = "
+              INSERT IGNORE INTO `paysuite_collection`
+              SET
+               ,`DDRefOrig`='{$m["DDRefOrig"]}'
+               ,`ClientRef`='{$m["ClientRef"]}'
+                `PaymentGuid`='{$c["payment_guid"]}'
+               ,`DateDue`='{$c["date_collected"]}'
+               ,`Amount`='{$c["amount"]}'
+              WHERE `ClientRef`='{$m['ClientRef']}'
+              LIMIT 1
+              ;
+            ";
+            try {
+                $this->connection->query ($sql);
+            }
+            catch (\mysqli_sql_exception $e) {
+                $this->error_log (125,"API insert collection '{$m['ClientRef']}-{$c["payment_guid"]}' failed: ".$e->getMessage());
+                throw new \Exception ("API insert collection '{$m['ClientRef']}-{$c["payment_guid"]}' failed: ".$e->getMessage());
+                return false;
+            }
+        }
+    }
+
     private function insert_mandate ($m)  {
-        $customer_guid = $this->insert_customer ($m);
-        $contract_guid = $this->insert_contract ($m);
+        // The Paysuite bit
+        $this->put_customer ($m);
+        $this->put_contract ($m);
+        // The local bit
         $sql = "
           UPDATE `paysuite_mandate`
           SET
-            `CustomerGuid`='$customer_guid'
-            `ContractGuid`='$contract_guid'
-            WHERE `ClientRef`='{$m['ClientRef']}'
-            LIMIT 1
+            `CustomerGuid`='{$m["CustomerGuid"]}'
+           ,`ContractGuid`='{$m["ContractGuid"]}'
+           ,`DDRefOrig`='{$m["DDRefOrig"]}'
+           ,`Status` = '{$m["Status"]}'
+           ,`FailReason` = '{$m["FailReason"]}'
+          WHERE `ClientRef`='{$m['ClientRef']}'
+          LIMIT 1
           ;
         ";
         try {
@@ -234,16 +290,17 @@ class PayApi {
     public function insert_mandates ($mandates)  {
         foreach ($mandates as $m) {
             $sql = "
-                SELECT
-                  *
-                FROM `paysuite_mandate`
-                WHERE
-                    `ClientRef`='{$m['ClientRef']}'
-                LIMIT 0,1
+              SELECT
+                *
+              FROM `paysuite_mandate`
+              WHERE `ClientRef`='{$m['ClientRef']}'
+              LIMIT 0,1
+              ;
             ";
             try {
                 $result = $this->connection->query ($sql);
                 if ($result->num_rows==0) {
+                    // This is a new mandate
                     $start_date = collection_startdate (date('Y-m-d'),$m['PayDay']);
                     $sql = "
                       INSERT IGNORE INTO `paysuite_mandate`
@@ -261,6 +318,7 @@ class PayApi {
                     echo $sql."\n";
                     $this->connection->query ($sql);
                     try {
+                        // Insert a new mandate at both ends
                         $this->insert_mandate ($m);
                     }
                     catch (\Exception $e) {
@@ -276,18 +334,7 @@ class PayApi {
                 return false;
             }
         }
-
-// Make sure this bit does not work for now
-fwrite (STDERR,"insert_mandates() has chickened out\n");
-return true;
-        // Make request and handle response
-$ok = false;
-        if ($ok) {
-            return true;
-        }
-        $this->error_log (126,$e);
-        throw new \Exception ('Failed to send new mandates using paysuite-api');
-        return false;
+        return true;
     }
 
     private function output_collections ( ) {
@@ -321,6 +368,22 @@ $ok = false;
         }
     }
 
+    private function put_customer (&$mandate) {
+// TODO: this is where top down should meet bottom up
+        $mandate['CustomerGuid'] = $returned['customer_guid'];
+        return true;
+
+    }
+
+    private function put_contract (&$mandate) {
+// TODO: this is where top down should meet bottom up
+        $mandate['ContractGuid'] = $returned['contract_guid'];
+        $mandate['DDRefOrig'] = $returned['dd_ref'];
+        $mandate['Status'] = $returned['status'];
+        $mandate['FailReason'] = $returned['fail_reason'];
+        return true;
+    }
+
     private function setup ( ) {
         foreach ($this->constants as $c) {
             if (!defined($c)) {
@@ -340,21 +403,8 @@ $ok = false;
             throw new \Exception ('SQL database error');
             return false;
         }
-    }
-
-    private function table_alter ($table) {
-        if ($table=='paysuite_mandate') {
-            $file = 'alter_mandate.sql';
-        }
-        elseif ($table=='paysuite_collection') {
-            $file = 'alter_collection.sql';
-        }
-        else {
-            $this->error_log (121,"Internal error");
-            throw new \Exception ("Table '$table' not recognised");
-            return false;
-        }
-        $this->execute (__DIR__.'/'.$file);
+        $this->execute (__DIR__.'/create_collection.sql');
+        $this->execute (__DIR__.'/create_mandate.sql');
     }
 
     private function table_load ($data,$tablename,$fields) {
