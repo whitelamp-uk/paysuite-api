@@ -164,11 +164,13 @@ class PayApi {
     }
 
     private function execute ($sql_file) {
+        echo $sql_file;
         $sql = file_get_contents ($sql_file);
         try {
             $result = $this->connection->query ($sql);
         }
         catch (\mysqli_sql_exception $e) {
+            print_r($e);
             $this->error_log (126,'SQL execute failed: '.$e->getMessage());
             throw new \Exception ('SQL execution error');
             return false;
@@ -177,18 +179,36 @@ class PayApi {
     }
 
     private function fetch_collections ($m) {
-// TODO: this is where top down should meet bottom up eg return value:
-        $collections = [
+        // TODO: this is where top down should meet bottom up eg return value:
+        $params = ['rows' => 10];
+        $response = $this->curl_get('contract/'.$m['ContractGuid'].'/payment');
+        
+        $collections = [];
+        if (isset($response['Payments'])) {
+            foreach ($response['Payments'] as $p) {
+                if ($p['Status'] == 'Paid') { // TODO: ignore recent payments? see docs.
+                    $collections[] = [
+                        'payment_guid' => $p['Id'],
+                        'date_collected' => substr($p['Date'], 0, 10),
+                        'amount' => $p['Amount']
+                    ];
+                }
+            }
+        }
+        return $collections;
+
+        /*$collections = [
             [
                 'payment_guid' => 'abc-xyz',
                 'date_collected' => '2022-02-01',
                 'amount' => 4.34
             ]
         ];
-        return $collections;
+        return $collections;*/
     }
 
-// TODO: an old development test or needed?
+    // Q: an old development test or needed?
+    // A: might yet prove useful...
     private function get_bacs_endpoints ( ) {
         foreach (['customer', 'contract', 'payment', 'schedule'] as $entity) {
             $endpoints[$entity] = $this->curl_get ('BACS/'.$entity.'/callback');
@@ -198,9 +218,10 @@ class PayApi {
     }
 
     public function import ( ) {
-//$this->test_customer();
+$this->test_customer();
 //$this->test_callback();
-$this->test_schedule ();
+//$this->test_schedule ();
+//$this->test_contract ();
 return;
         // Get all the mandates
         $sql = "
@@ -288,6 +309,11 @@ return;
     }
 
     public function insert_mandates ($mandates)  {
+        if (!count($mandates)) {
+            fwrite (STDERR,"No mandates to insert\n");
+            return true;
+        }
+
         foreach ($mandates as $m) {
             $sql = "
               SELECT
@@ -369,19 +395,84 @@ return;
     }
 
     private function put_customer (&$mandate) {
-// TODO: this is where top down should meet bottom up
-        $mandate['CustomerGuid'] = $returned['customer_guid'];
-        return true;
+        // required.
+        $details = [
+            "Email" => $m['Email'],
+            "Title" => $m['Title'],
+            "CustomerRef" => $m['ClientRef'], // client_ref
+            "FirstName" => $m['NamesGiven'],
+            "Surname" => $m['NamesFamily'],
+            "Line1" => substr($m['AddressLine1'], 0, 50),
+            "Line2" => substr($m['AddressLine2'], 0, 30),
+            "PostCode" => $m['Postcode'],
+            "AccountNumber" => $m['Account'],
+            "BankSortCode" => $m['SortCode'],
+            "AccountHolderName" => $m['Name']
+        ];
+        //optional
+        if (strlen($m['AddressLine3'])) {
+            $details['Line3'] = substr($m['AddressLine3'], 0, 30);
+        }
 
+        $response = $this->curl_post('customer', $details);
+
+        if (isset($response['ErrorCode'])) {
+            throw new \Exception ($response['ErrorCode'].'. '.$response['Message'].': '.$response['Detail']);
+            return false;
+        }
+
+        if (!isset($response['Id'])) {
+            throw new \Exception ('No GUID returned by API');
+            return false;
+        }
+
+        $mandate['CustomerGuid'] = $response['Id'];    
+        return true;
     }
 
     private function put_contract (&$mandate) {
-// TODO: this is where top down should meet bottom up
-        $mandate['ContractGuid'] = $returned['contract_guid'];
-        $mandate['DDRefOrig'] = $returned['dd_ref'];
+
+        $customer_guid = $mandate['CustomerGuid'];
+        $start_date = collection_startdate (date('Y-m-d'),$m['PayDay']); // returns Y-m-d
+
+        $start_date = str_replace('-', '', $start_date); // strip dashes 
+        $paymentMonthInYear = intval(substr($start_date, 4, 2));
+        $paymentDayInMonth = intval(substr($start_date, 6, 2));
+
+        $details = [
+            "scheduleName" => "Default Schedule", // required (Either Name or ID)
+            "start" => $start_date."T00:00:00.000", // required, yes the docs say to pass a microsecond value!
+            "isGiftAid" => "false", // required 
+            "amount" => $mandate['Amount'],
+            "paymentMonthInYear" => $paymentMonthInYear, // must match start date
+            "paymentDayInMonth" => $paymentDayInMonth,  // must match start date
+            "terminationType" => "Until further notice", // required 
+            "atTheEnd" => "Switch to Further Notice", // required 
+            "additionalReference" => $mandate['Chances'], // used for chances
+        ];
+
+        $response = $this->curl_post('customer/'.$customer_guid.'/contract', $details);
+
+        if (isset($response['ErrorCode'])) {
+            $mandate['FailReason'] = $response['Detail'];
+            throw new \Exception ($response['ErrorCode'].'. '.$response['Message'].': '.$response['Detail']);
+            return false;
+        }
+
+        if (!isset($response['Id'])) {
+            throw new \Exception ('No GUID returned by API');
+            return false;
+        }
+
+        $mandate['ContractGuid'] = $response['Id'];    
+        $mandate['DDRefOrig'] = $response['DirectDebitRef'];    
+        return true;
+
+        /*
         $mandate['Status'] = $returned['status'];
         $mandate['FailReason'] = $returned['fail_reason'];
         return true;
+        */
     }
 
     private function setup ( ) {
@@ -403,8 +494,8 @@ return;
             throw new \Exception ('SQL database error');
             return false;
         }
-        $this->execute (__DIR__.'/create_collection.sql');
         $this->execute (__DIR__.'/create_mandate.sql');
+        $this->execute (__DIR__.'/create_collection.sql');
     }
 
     private function table_load ($data,$tablename,$fields) {
@@ -434,7 +525,7 @@ return;
     private function test_callback() {
         $r = $this->curl_get('BACS/contract/callback');
         echo "\nget: ";print_r($r);
-        $r = $this->curl_post('BACS/contract/callback', ['url' => 'http://foobar.com']);
+        $r = $this->curl_post('BACS/contract/callback', ['url' => '']);
         echo "\npost: ";print_r($r);
         $r = $this->curl_get('BACS/contract/callback');
         echo "\nget: ";print_r($r);
@@ -444,11 +535,57 @@ return;
         echo "\n5get: ";print_r($r);
     }
 
+    private function test_contract() {
+        $customer_guid = '3a02c36f-65dd-4569-ad7f-f7d420d56cdd';
+        $details = [
+
+            "scheduleName" => "Default Schedule", // required (Either Name or ID)
+            //"scheduleId" => "", // required 
+            "start" => "2022-04-01T00:00:00.000", // required, yes the docs say to pass a microsecond value!
+            // "numberOfDebits" => "", used if it's a "take certain number"
+            // "every" => "", use this to do every three months and so on
+            "isGiftAid" => "false", // required 
+            //"initialAmount" => "", if different to normal
+            //"extraInitialAmounts" => "", e.g. for a registration fee
+            "amount" => "4.34",
+            //"finalAmount" => "",
+            "paymentMonthInYear" => "4", // must match start date
+            "paymentDayInMonth" => "1",  // must match start date
+            //"paymentDayInWeek" => "", for weekly contracts
+            "terminationType" => "Until further notice", // required 
+            "atTheEnd" => "Switch to Further Notice", // required 
+            //"terminationDate" => "",
+            "additionalReference" => "1", // used for chances
+            //"customDirectDebitRef" => "", only to be used if instructed to do so!
+
+        ];
+
+        $r = $this->curl_post('customer/'.$customer_guid.'/contract', $details);
+        echo "\npost: ";print_r($r);
+
+        $r = $this->curl_get('customer/'.$customer_guid.'/contract');
+        echo "\nget: ";print_r($r);
+
+
+    }
+
+/*
+    Bad response
+    [ErrorCode] => 3
+    [Detail] => There is an existing Customer with the same Client and CustomerRef in the database already.
+    [Message] => Validation error
+
+    Good response
+    [CustomerRef] => BB1234_1235
+    [Id] => 908a0f38-6b38-42d1-8f16-1972ddaff594
+    [Message] => 
+*/
+
     private function test_customer() {
         $details = [
-            "Email" => "john.doe@test.com",
+            "Email" => "", //john.doe@test.com
             "Title" => "Mr",
-            "CustomerRef" => "Y99999",
+            "CustomerRef" => "BB1234_1235", // client_ref
             "FirstName" => "John",
             "Surname" => "Doe",
             "Line1" => "1 Tebbit Mews",
@@ -459,24 +596,23 @@ return;
             "AccountHolderName" => "Mr John Doe"
         ];
 
-
         $patchdetails = [
+            "CustomerRef" => "BB1234_1234", // client_ref
             "AccountNumber" => "82345671",
             "BankSortCode" => "823456",
         ];
 
+        $r = $this->curl_post('customer', $details);
+        echo "\npost: ";print_r($r);
 
-        //$r = $this->curl_post('customer', $details);
+        //$r = $this->curl_delete('customer/798e5d5c-c4a8-4375-9a42-06a8002110ed');
+        //echo "\ndelete: ";print_r($r);
+
+        //$r = $this->curl_patch('customer/3a02c36f-65dd-4569-ad7f-f7d420d56cdd', $patchdetails);
         //echo "\npatch: ";print_r($r);
 
-        $r = $this->curl_delete('customer/798e5d5c-c4a8-4375-9a42-06a8002110ed');
-        echo "\ndelete: ";print_r($r);
-
-        $r = $this->curl_patch('customer/3a02c36f-65dd-4569-ad7f-f7d420d56cdd', $patchdetails);
-        echo "\npatch: ";print_r($r);
-
-        $r = $this->curl_get('customer');
-        echo "\nget: ";print_r($r); // ->Customers[2]
+        //$r = $this->curl_get('customer');
+        //echo "\nget: ";print_r($r); // ->Customers[2]
 
     }
 
@@ -486,4 +622,3 @@ return;
     }
 
 }
-
