@@ -182,10 +182,10 @@ class PayApi {
         // TODO: this is where top down should meet bottom up eg return value:
         $params = ['rows' => 10];
         $response = $this->curl_get('contract/'.$m['ContractGuid'].'/payment');
-        
+
         $collections = [];
-        if (isset($response['Payments'])) {
-            foreach ($response['Payments'] as $p) {
+        if (isset($response->Payments)) {
+            foreach ($response->Payments as $p) {
                 if ($p['Status'] == 'Paid') { // TODO: ignore recent payments? see docs.
                     $collections[] = [
                         'payment_guid' => $p['Id'],
@@ -218,15 +218,15 @@ class PayApi {
     }
 
     public function import ( ) {
-$this->test_customer();
+//$this->test_customer();
 //$this->test_callback();
 //$this->test_schedule ();
 //$this->test_contract ();
-return;
+//return;
         // Get all the mandates
         $sql = "
           SELECT
-           ,`ContractGuid`
+           `ContractGuid`
            ,`ClientRef`
           FROM `paysuite_mandate`
           ORDER BY `MandateId`
@@ -417,6 +417,7 @@ return;
         $response = $this->curl_post('customer', $details);
 
         if (isset($response['ErrorCode'])) {
+            $mandate['FailReason'] = $response['ErrorCode'].'. '.$response['Message'].': '.$response['Detail'];
             throw new \Exception ($response['ErrorCode'].'. '.$response['Message'].': '.$response['Detail']);
             return false;
         }
@@ -454,7 +455,7 @@ return;
         $response = $this->curl_post('customer/'.$customer_guid.'/contract', $details);
 
         if (isset($response['ErrorCode'])) {
-            $mandate['FailReason'] = $response['Detail'];
+            $mandate['FailReason'] = $response['ErrorCode'].'. '.$response['Message'].': '.$response['Detail'];
             throw new \Exception ($response['ErrorCode'].'. '.$response['Message'].': '.$response['Detail']);
             return false;
         }
@@ -560,8 +561,8 @@ return;
 
         ];
 
-        $r = $this->curl_post('customer/'.$customer_guid.'/contract', $details);
-        echo "\npost: ";print_r($r);
+        //$r = $this->curl_post('customer/'.$customer_guid.'/contract', $details);
+        //echo "\npost: ";print_r($r);
 
         $r = $this->curl_get('customer/'.$customer_guid.'/contract');
         echo "\nget: ";print_r($r);
@@ -602,8 +603,8 @@ return;
             "BankSortCode" => "823456",
         ];
 
-        $r = $this->curl_post('customer', $details);
-        echo "\npost: ";print_r($r);
+        //$r = $this->curl_post('customer', $details);
+        //echo "\npost: ";print_r($r);
 
         //$r = $this->curl_delete('customer/798e5d5c-c4a8-4375-9a42-06a8002110ed');
         //echo "\ndelete: ";print_r($r);
@@ -611,8 +612,8 @@ return;
         //$r = $this->curl_patch('customer/3a02c36f-65dd-4569-ad7f-f7d420d56cdd', $patchdetails);
         //echo "\npatch: ";print_r($r);
 
-        //$r = $this->curl_get('customer');
-        //echo "\nget: ";print_r($r); // ->Customers[2]
+        $r = $this->curl_get('customer');
+        echo "\nget: ";print_r($r); // ->Customers[2]
 
     }
 
