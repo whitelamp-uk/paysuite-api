@@ -278,8 +278,9 @@ class PayApi {
 
     private function insert_mandate ($m)  {
         // The Paysuite bit
-        $this->put_customer ($m);
-        $this->put_contract ($m);
+        if ($this->put_customer ($m)) {
+            $this->put_contract ($m);
+        }
         // The local bit
         $sql = "
           UPDATE `paysuite_mandate`
@@ -313,6 +314,9 @@ class PayApi {
             fwrite (STDERR,"No mandates to insert\n");
             return true;
         }
+
+        $good = $bad = 0; // for summary email
+        $body = '';
 
         foreach ($mandates as $m) {
             $sql = "
@@ -359,7 +363,23 @@ class PayApi {
                 throw new \Exception ('SQL insert failed: '.$e->getMessage());
                 return false;
             }
+            if ($m['ContractGuid']) {
+                $good++;
+                $body .= $m['ClientRef']." SUCCESS\n";
+            } else {
+                $bad++;
+                $body .= $m['ClientRef']." FAIL\n";
+                if (!$m['CustomerGuid']) {
+                    $body .= "No Customer created. ";
+                } else {
+                    $body .= "No Contract created. ";
+                }
+                $body .= $m['FailReason']."\n";
+            }
         }
+        // send
+        $subj = "RSM insert mandates for ".strtoupper(BLOTTO_ORG_USER).", $good good, $bad bad";
+        mail(BLOTTO_EMAIL_WARN_TO, $subj, $body);
         return true;
     }
 
@@ -415,15 +435,15 @@ class PayApi {
         }
 
         $response = $this->curl_post('customer', $details);
+        print_r($response); // for now, dump to log file
 
         if (isset($response['ErrorCode'])) {
             $mandate['FailReason'] = $response['ErrorCode'].'. '.$response['Message'].': '.$response['Detail'];
-            throw new \Exception ($response['ErrorCode'].'. '.$response['Message'].': '.$response['Detail']);
             return false;
         }
 
         if (!isset($response['Id'])) {
-            throw new \Exception ('No GUID returned by API');
+            $mandate['FailReason'] = 'No Customer GUID returned by API';
             return false;
         }
 
@@ -453,27 +473,21 @@ class PayApi {
         ];
 
         $response = $this->curl_post('customer/'.$customer_guid.'/contract', $details);
+        print_r($response); // for now, dump to log file
 
         if (isset($response['ErrorCode'])) {
             $mandate['FailReason'] = $response['ErrorCode'].'. '.$response['Message'].': '.$response['Detail'];
-            throw new \Exception ($response['ErrorCode'].'. '.$response['Message'].': '.$response['Detail']);
             return false;
         }
 
         if (!isset($response['Id'])) {
-            throw new \Exception ('No GUID returned by API');
+            $mandate['FailReason'] = 'No Contract GUID returned by API';
             return false;
         }
 
         $mandate['ContractGuid'] = $response['Id'];    
         $mandate['DDRefOrig'] = $response['DirectDebitRef'];    
         return true;
-
-        /*
-        $mandate['Status'] = $returned['status'];
-        $mandate['FailReason'] = $returned['fail_reason'];
-        return true;
-        */
     }
 
     private function setup ( ) {
