@@ -252,16 +252,20 @@ class PayApi {
         $collections = $this->fetch_collections ($m);
         // The local bit
         foreach ($collections as $c) {
-            // Payment GUID is unique so insert-ignore seems like a good idea
+            // Payment GUID is unique so we do an update
             $sql = "
-              INSERT IGNORE INTO `paysuite_collection`
+              INSERT INTO `paysuite_collection`
               SET
-               ,`DDRefOrig`='{$m["DDRefOrig"]}'
+               `DDRefOrig`='{$m["DDRefOrig"]}'
                ,`ClientRef`='{$m["ClientRef"]}'
-                `PaymentGuid`='{$c["payment_guid"]}'
+               ,`PaymentGuid`='{$c["payment_guid"]}'
                ,`DateDue`='{$c["date_collected"]}'
                ,`Amount`='{$c["amount"]}'
-              WHERE `ClientRef`='{$m['ClientRef']}'
+              ON DUPLICATE KEY UPDATE
+               `DDRefOrig`='{$m["DDRefOrig"]}'
+               ,`ClientRef`='{$m["ClientRef"]}'
+               ,`DateDue`='{$c["date_collected"]}'
+               ,`Amount`='{$c["amount"]}'
               LIMIT 1
               ;
             ";
@@ -333,10 +337,18 @@ class PayApi {
                     // This is a new mandate
                     $start_date = collection_startdate (date('Y-m-d'),$m['PayDay']);
                     $sql = "
-                      INSERT IGNORE INTO `paysuite_mandate`
+                      INSERT INTO `paysuite_mandate`
                       SET
                         `ClientRef`='{$m['ClientRef']}'
                        ,`Name`='{$m['Name']}'
+                       ,`Sortcode`='{$m['SortCode']}'
+                       ,`Account`='{$m['Account']}'
+                       ,`StartDate`='$start_date'
+                       ,`Freq`='{$m['Freq']}'
+                       ,`Amount`='{$m['Amount']}'
+                       ,`ChancesCsv`='{$m['Chances']}'
+                       ON DUPLICATE KEY UPDATE
+                       `Name`='{$m['Name']}'
                        ,`Sortcode`='{$m['SortCode']}'
                        ,`Account`='{$m['Account']}'
                        ,`StartDate`='$start_date'
@@ -409,7 +421,7 @@ class PayApi {
         }
         catch (\mysqli_sql_exception $e) {
             $this->error_log (124,'SQL insert failed: '.$e->getMessage());
-            throw new \Exception ('SQL error');
+            throw new \Exception ('SQL error '.$e->getMessage());
             return false;
         }
     }
@@ -540,14 +552,14 @@ class PayApi {
     private function test_callback() {
         $r = $this->curl_get('BACS/contract/callback');
         echo "\nget: ";print_r($r);
-        $r = $this->curl_post('BACS/contract/callback', ['url' => '']);
+        /*$r = $this->curl_post('BACS/contract/callback', ['url' => '']);
         echo "\npost: ";print_r($r);
         $r = $this->curl_get('BACS/contract/callback');
         echo "\nget: ";print_r($r);
         $r = $this->curl_delete('BACS/contract/callback');
         echo "\ndelete: ";print_r($r);
         $r = $this->curl_get('BACS/contract/callback');
-        echo "\n5get: ";print_r($r);
+        echo "\n5get: ";print_r($r);*/
     }
 
     private function test_contract() {
