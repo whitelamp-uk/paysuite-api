@@ -473,7 +473,7 @@ class PayApi {
         $paymentDayInMonth = intval(substr($start_date, 6, 2));
 
         $details = [
-            "scheduleName" => "Default Schedule", // required (Either Name or ID)
+            "scheduleName" => PST_SCHEDULE, // required (Either Name or ID) 
             "start" => $start_date."T00:00:00.000", // required, yes the docs say to pass a microsecond value!
             "isGiftAid" => "false", // required 
             "amount" => $mandate['Amount'],
