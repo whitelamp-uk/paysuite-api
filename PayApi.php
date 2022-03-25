@@ -454,6 +454,11 @@ $this->test_schedule ();
         $response = $this->curl_post('customer', $details);
         print_r($response); // for now, dump to log file
 
+        if (isset($response->error)) {
+            $mandate['FailReason'] = $response->error;
+            return false;
+        }
+
         if (isset($response->ErrorCode)) {
             $mandate['FailReason'] = $response->ErrorCode.'. '.$response->Message.': '.$response->Detail;
             if (strpos($response->Detail, 'existing Customer')) {
@@ -473,9 +478,9 @@ $this->test_schedule ();
 
 
     private function put_contract (&$mandate) {
-
+        print_r($mandate);
         $customer_guid = $mandate['CustomerGuid'];
-        $start_date = collection_startdate (date('Y-m-d'),$m['PayDay']); // returns Y-m-d
+        $start_date = collection_startdate (date('Y-m-d'),$mandate['PayDay']); // returns Y-m-d
 
         $start_date = str_replace('-', '', $start_date); // strip dashes 
         $paymentMonthInYear = intval(substr($start_date, 4, 2));
@@ -495,6 +500,11 @@ $this->test_schedule ();
         print_r($details);
         $response = $this->curl_post('customer/'.$customer_guid.'/contract', $details);
         print_r($response); // for now, dump to log file
+
+        if (isset($response->error)) {
+            $mandate['FailReason'] = $response->error;
+            return false;
+        }
 
         if (isset($response->ErrorCode)) {
             $mandate['FailReason'] = $response->ErrorCode.'. '.$response->Message.': '.$response->Detail;
