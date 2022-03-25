@@ -456,6 +456,9 @@ $this->test_schedule ();
 
         if (isset($response->ErrorCode)) {
             $mandate['FailReason'] = $response->ErrorCode.'. '.$response->Message.': '.$response->Detail;
+            if (strpos($response->Message, 'existing Customer')) {
+                return true;
+            }
             return false;
         }
 
@@ -489,7 +492,7 @@ $this->test_schedule ();
             "atTheEnd" => "Switch to Further Notice", // required 
             "additionalReference" => $mandate['Chances'], // used for chances
         ];
-
+        print_r($details);
         $response = $this->curl_post('customer/'.$customer_guid.'/contract', $details);
         print_r($response); // for now, dump to log file
 
