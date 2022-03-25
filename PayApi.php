@@ -220,7 +220,7 @@ class PayApi {
     public function import ( ) {
 //$this->test_customer();
 //$this->test_callback();
-//$this->test_schedule ();
+$this->test_schedule ();
 //$this->test_contract ();
 //return;
         // Get all the mandates
@@ -412,6 +412,10 @@ class PayApi {
     }
 
     private function output_mandates ( ) {
+        $rows = $this->connection->query ("show tables");
+        while ($r=$rows->fetch_assoc()) {
+            print_r($r);
+        }
         $sql                = "INSERT INTO `".PST_TABLE_MANDATE."`\n";
         $sql               .= file_get_contents (__DIR__.'/select_mandate.sql');
         echo $sql;
@@ -429,39 +433,40 @@ class PayApi {
     private function put_customer (&$mandate) {
         // required.
         $details = [
-            "Email" => $m['Email'],
-            "Title" => $m['Title'],
-            "CustomerRef" => $m['ClientRef'], // client_ref
-            "FirstName" => $m['NamesGiven'],
-            "Surname" => $m['NamesFamily'],
-            "Line1" => substr($m['AddressLine1'], 0, 50),
-            "Line2" => substr($m['AddressLine2'], 0, 30),
-            "PostCode" => $m['Postcode'],
-            "AccountNumber" => $m['Account'],
-            "BankSortCode" => $m['SortCode'],
-            "AccountHolderName" => $m['Name']
+            "Email" => $mandate['Email'],
+            "Title" => $mandate['Title'],
+            "CustomerRef" => $mandate['ClientRef'], // client_ref
+            "FirstName" => $mandate['NamesGiven'],
+            "Surname" => $mandate['NamesFamily'],
+            "Line1" => substr($mandate['AddressLine1'], 0, 50),
+            "Line2" => substr($mandate['AddressLine2'], 0, 30),
+            "PostCode" => $mandate['Postcode'],
+            "AccountNumber" => $mandate['Account'],
+            "BankSortCode" => $mandate['SortCode'],
+            "AccountHolderName" => $mandate['Name']
         ];
         //optional
-        if (strlen($m['AddressLine3'])) {
-            $details['Line3'] = substr($m['AddressLine3'], 0, 30);
+        if (strlen($mandate['AddressLine3'])) {
+            $details['Line3'] = substr($mandate['AddressLine3'], 0, 30);
         }
 
         $response = $this->curl_post('customer', $details);
         print_r($response); // for now, dump to log file
 
-        if (isset($response['ErrorCode'])) {
-            $mandate['FailReason'] = $response['ErrorCode'].'. '.$response['Message'].': '.$response['Detail'];
+        if (isset($response->ErrorCode)) {
+            $mandate['FailReason'] = $response->ErrorCode.'. '.$response->Message.': '.$response->Detail;
             return false;
         }
 
-        if (!isset($response['Id'])) {
+        if (!isset($response->Id)) {
             $mandate['FailReason'] = 'No Customer GUID returned by API';
             return false;
         }
 
-        $mandate['CustomerGuid'] = $response['Id'];    
+        $mandate['CustomerGuid'] = $response->Id;    
         return true;
     }
+
 
     private function put_contract (&$mandate) {
 
@@ -487,18 +492,18 @@ class PayApi {
         $response = $this->curl_post('customer/'.$customer_guid.'/contract', $details);
         print_r($response); // for now, dump to log file
 
-        if (isset($response['ErrorCode'])) {
-            $mandate['FailReason'] = $response['ErrorCode'].'. '.$response['Message'].': '.$response['Detail'];
+        if (isset($response->ErrorCode)) {
+            $mandate['FailReason'] = $response->ErrorCode.'. '.$response->Message.': '.$response->Detail;
             return false;
         }
 
-        if (!isset($response['Id'])) {
+        if (!isset($response->Id)) {
             $mandate['FailReason'] = 'No Contract GUID returned by API';
             return false;
         }
 
-        $mandate['ContractGuid'] = $response['Id'];    
-        $mandate['DDRefOrig'] = $response['DirectDebitRef'];    
+        $mandate['ContractGuid'] = $response->Id;    
+        $mandate['DDRefOrig'] = $response->DirectDebitRef;    
         return true;
     }
 
