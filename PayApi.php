@@ -456,7 +456,7 @@ $this->test_schedule ();
 
         if (isset($response->ErrorCode)) {
             $mandate['FailReason'] = $response->ErrorCode.'. '.$response->Message.': '.$response->Detail;
-            if (strpos($response->Message, 'existing Customer')) {
+            if (strpos($response->Detail, 'existing Customer')) {
                 return true;
             }
             return false;
