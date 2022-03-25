@@ -432,6 +432,7 @@ $this->test_schedule ();
 
     private function put_customer (&$mandate) {
         // required.
+        $sort = preg_replace('/\D/', '', $mandate['SortCode']);
         $details = [
             "Email" => $mandate['Email'],
             "Title" => $mandate['Title'],
@@ -442,7 +443,7 @@ $this->test_schedule ();
             "Line2" => substr($mandate['AddressLine2'], 0, 30),
             "PostCode" => $mandate['Postcode'],
             "AccountNumber" => $mandate['Account'],
-            "BankSortCode" => $mandate['SortCode'],
+            "BankSortCode" => $sort,
             "AccountHolderName" => $mandate['Name']
         ];
         //optional
