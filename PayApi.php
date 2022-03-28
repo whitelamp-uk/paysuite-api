@@ -281,20 +281,44 @@ $this->test_schedule ();
     }
 
     private function insert_mandate ($m)  {
-        // The Paysuite bit
-        if ($this->put_customer ($m)) {
-            $this->put_contract ($m);
+        // Customer ( == player )
+        if (!$m['CustomerGuid']) {
+            $this->put_customer ($m);
+            $sql = "
+              UPDATE `paysuite_mandate`
+              SET
+                `CustomerGuid`='{$m['CustomerGuid']}'
+              WHERE `ClientRef`='{$m['ClientRef']}'
+              LIMIT 1
+              ;
+            ";
+            try {
+                $result = $this->connection->query ($sql);
+                if ($this->connection->affected_rows!=1) {
+                    $this->error_log (126,"API update mandate [1] '{$m['ClientRef']}' - no affected rows");
+                    throw new \Exception ("API update mandate [1] '{$m['ClientRef']}' - no affected rows");
+                    return false;
+                }
+            }
+            catch (\mysqli_sql_exception $e) {
+                $this->error_log (125,"API update mandate [2] '{$m['ClientRef']}' failed: ".$e->getMessage());
+                throw new \Exception ("API update mandate [2] '{$m['ClientRef']}' failed: ".$e->getMessage());
+                return false;
+            }
         }
-        // The local bit
-        if (!array_key_exists('ContractGuid',$mandate) || !$mandate['ContractGuid']) {
-            throw new \Exception ("Cannot insert mandate {$m['ClientRef']} without contract GUID");
+        // Contract ( == mandate )
+        if ($m['ContractGuid']) {
+            return true;
+        }
+        $this->put_contract ($m);
+        if (!$mandate['ContractGuid']) {
+            throw new \Exception ("Cannot complete mandate {$m['ClientRef']} without contract GUID");
             return false;
         }
         $sql = "
           UPDATE `paysuite_mandate`
           SET
-            `CustomerGuid`='{$m["CustomerGuid"]}'
-           ,`ContractGuid`='{$m["ContractGuid"]}'
+            `ContractGuid`='{$m["ContractGuid"]}'
            ,`DDRefOrig`='{$m["DDRefOrig"]}'
            ,`Status` = '{$m["Status"]}'
            ,`FailReason` = '{$m["FailReason"]}'
@@ -305,14 +329,14 @@ $this->test_schedule ();
         try {
             $result = $this->connection->query ($sql);
             if ($this->connection->affected_rows!=1) {
-                $this->error_log (126,"API update mandate '{$m['ClientRef']}' - no affected rows");
-                throw new \Exception ("API update mandate '{$m['ClientRef']}' - no affected rows");
+                $this->error_log (126,"API update mandate [3] '{$m['ClientRef']}' - no affected rows");
+                throw new \Exception ("API update mandate [3] '{$m['ClientRef']}' - no affected rows");
                 return false;
             }
         }
         catch (\mysqli_sql_exception $e) {
-            $this->error_log (125,"API update mandate '{$m['ClientRef']}' failed: ".$e->getMessage());
-            throw new \Exception ("API update mandate '{$m['ClientRef']}' failed: ".$e->getMessage());
+            $this->error_log (125,"API update mandate [4] '{$m['ClientRef']}' failed: ".$e->getMessage());
+            throw new \Exception ("API update mandate [4] '{$m['ClientRef']}' failed: ".$e->getMessage());
             return false;
         }
     }
@@ -460,29 +484,16 @@ $this->test_schedule ();
         $response = $this->curl_post('customer', $details);
         print_r($response); // for now, dump to log file
 
-        if (isset($response->error)) {
-            $mandate['FailReason'] = $response->error;
-            return false;
-        }
-
-        if (isset($response->ErrorCode)) {
+        $mandate['FailReason'] = "";
+        if (array_key_exists('ErrorCode',$response) && $response->ErrorCode) {
             $mandate['FailReason'] = $response->ErrorCode.'. '.$response->Message.': '.$response->Detail;
-            if (strpos($response->Detail, 'existing Customer')) {
-
-// Need to fetch and set $mandate['CustomerGuid']
-
-                return true;
-            }
-            return false;
-        }
-
-        if (!isset($response->Id)) {
-            $mandate['FailReason'] = 'No Customer GUID returned by API';
+            throw new \Exception ($mandate['FailReason']);
             return false;
         }
 
         $mandate['CustomerGuid'] = $response->Id;    
         return true;
+
     }
 
 
@@ -512,24 +523,17 @@ $this->test_schedule ();
         $response = $this->curl_post ('customer/'.$customer_guid.'/contract',$details);
         print_r ($response); // for now, dump to log file
 
-        if (isset($response->error)) {
-            $mandate['FailReason'] = $response->error;
-            return false;
-        }
-
-        if (isset($response->ErrorCode)) {
+        $mandate['FailReason'] = "";
+        if (array_key_exists('ErrorCode',$response) && $response->ErrorCode) {
             $mandate['FailReason'] = $response->ErrorCode.'. '.$response->Message.': '.$response->Detail;
-            return false;
-        }
-
-        if (!isset($response->Id)) {
-            $mandate['FailReason'] = 'No Contract GUID returned by API';
+            throw new \Exception ($mandate['FailReason']);
             return false;
         }
 
         $mandate['ContractGuid'] = $response->Id;    
         $mandate['DDRefOrig'] = $response->DirectDebitRef;    
         return true;
+
     }
 
     private function setup ( ) {
