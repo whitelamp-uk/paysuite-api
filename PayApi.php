@@ -479,6 +479,10 @@ $this->test_schedule ();
 
     private function put_contract (&$mandate) {
         print_r($mandate);
+        if (!array_key_exists('CustomerGuid',$mandate) || !$mandate['CustomerGuid']) {
+            throw new \Exception ("Cannot put contract for {$mandate['ClientRef']} without a customer GUID");
+            return false;
+        }
         $customer_guid = $mandate['CustomerGuid'];
         $start_date = collection_startdate (date('Y-m-d'),$mandate['PayDay']); // returns Y-m-d
 
