@@ -384,17 +384,20 @@ $this->test_schedule ();
             else {
                 $bad++;
                 $body .= $m['ClientRef']." FAIL\n";
-                if (!$m['CustomerGuid']) {
+                if (!array_key_exists('CustomerGuid',$m) || !$m['CustomerGuid']) {
                     $body .= "No Customer created. ";
-                } else {
+                }
+                elseif (!array_key_exists('ContractGuid',$m) || !$m['ContractGuid']) {
                     $body .= "No Contract created. ";
                 }
-                $body .= $m['FailReason']."\n";
+                if (array_key_exists('FailReason',$m) && $m['FailReason']) {
+                    $body .= $m['FailReason']."\n";
+                }
             }
         }
         // send
         $subj = "RSM insert mandates for ".strtoupper(BLOTTO_ORG_USER).", $good good, $bad bad";
-        mail(BLOTTO_EMAIL_WARN_TO, $subj, $body);
+        mail (BLOTTO_EMAIL_WARN_TO,$subj,$body);
         return true;
     }
 
