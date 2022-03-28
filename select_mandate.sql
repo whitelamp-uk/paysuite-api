@@ -3,7 +3,7 @@
 SELECT
   'PST'
  ,null
- ,`DDRefOrig`
+ ,CONCAT(`DDRefOrig`,'')
  ,`ClientRef`
  ,`MandateCreated`
  ,`Updated`
@@ -21,7 +21,8 @@ SELECT
  ,`MandateCreated`
  ,`StartDate`
 FROM `paysuite_mandate`
-WHERE 1
+WHERE `ContractGuid` IS NOT NULL
+  AND `ContractGuid`!=''
 GROUP BY `MandateId`
 ORDER BY `MandateId`
 ;
