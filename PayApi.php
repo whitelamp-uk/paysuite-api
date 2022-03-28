@@ -220,7 +220,7 @@ class PayApi {
     public function import ( ) {
 //$this->test_customer();
 //$this->test_callback();
-$this->test_schedule ();
+//$this->test_schedule ();
 //$this->test_contract ();
 //return;
         // Get all the mandates
@@ -402,10 +402,10 @@ $this->test_schedule ();
                 $bad++;
                 $body .= $m['ClientRef']." FAIL\n";
                 if (!array_key_exists('CustomerGuid',$m) || !$m['CustomerGuid']) {
-                    $body .= "No customer entity created. ";
+                    $body .= "No customer entity created.\n";
                 }
                 elseif (!array_key_exists('ContractGuid',$m) || !$m['ContractGuid']) {
-                    $body .= "No contract entity created. ";
+                    $body .= "No contract entity created.\n";
                 }
                 if (array_key_exists('FailReason',$m) && $m['FailReason']) {
                     $body .= $m['FailReason']."\n";
@@ -413,7 +413,7 @@ $this->test_schedule ();
             }
         }
         // send
-        $subj = "RSM insert mandates for ".strtoupper(BLOTTO_ORG_USER).", $good good, $bad bad";
+        $subj = "Paysuite insert mandates for ".strtoupper(BLOTTO_ORG_USER).", $good good, $bad bad";
         mail (BLOTTO_EMAIL_WARN_TO,$subj,$body);
         return true;
     }
@@ -478,7 +478,12 @@ $this->test_schedule ();
         print_r($response); // for now, dump to log file
 
         $mandate['FailReason'] = "";
-        if (array_key_exists('ErrorCode',$response) && $response->ErrorCode) {
+        if (isset( $response->error)) { // e.g.  The requested resource is not found
+            $mandate['FailReason'] = $response->error;
+            throw new \Exception ($mandate['FailReason']);
+            return false;
+        }
+        if (isset( $response->ErrorCode)) { // e.g. badly formatted date
             $mandate['FailReason'] = $response->ErrorCode.'. '.$response->Message.': '.$response->Detail;
             throw new \Exception ($mandate['FailReason']);
             return false;
@@ -486,7 +491,6 @@ $this->test_schedule ();
 
         $mandate['CustomerGuid'] = $response->Id;    
         return true;
-
     }
 
 
@@ -517,7 +521,13 @@ $this->test_schedule ();
         print_r ($response); // for now, dump to log file
 
         $mandate['FailReason'] = "";
-        if (array_key_exists('ErrorCode',$response) && $response->ErrorCode) {
+
+        if (isset( $response->error)) { // e.g.  The requested resource is not found
+            $mandate['FailReason'] = $response->error;
+            throw new \Exception ($mandate['FailReason']);
+            return false;
+        }
+        if (isset( $response->ErrorCode)) { // e.g. badly formatted date
             $mandate['FailReason'] = $response->ErrorCode.'. '.$response->Message.': '.$response->Detail;
             throw new \Exception ($mandate['FailReason']);
             return false;
@@ -526,7 +536,6 @@ $this->test_schedule ();
         $mandate['ContractGuid'] = $response->Id;    
         $mandate['DDRefOrig'] = $response->DirectDebitRef;    
         return true;
-
     }
 
     private function setup ( ) {
@@ -666,13 +675,16 @@ $this->test_schedule ();
         //echo "\npatch: ";print_r($r);
 
         $r = $this->curl_get('customer');
-        echo "\nget: ";print_r($r); // ->Customers[2]
+        echo "\nget: "; // ->Customers[2]
+        foreach ($r->Customers as $c) {
+            echo $c->CustomerRef.' '.$c->Id."\n";
+        }
 
     }
 
     private function test_schedule() {
         $r = $this->curl_get('schedules');
-        echo "\nget: ";print_r($r);
+        echo "\nget: "; print_r($r);
     }
 
 }
