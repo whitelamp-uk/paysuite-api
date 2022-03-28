@@ -346,10 +346,8 @@ $this->test_schedule ();
             fwrite (STDERR,"No mandates to insert\n");
             return true;
         }
-
         $good = $bad = 0; // for summary email
         $body = '';
-
         foreach ($mandates as $m) {
             $sql = "
               SELECT
@@ -376,20 +374,15 @@ $this->test_schedule ();
                        ,`Freq`='{$m['Freq']}'
                        ,`Amount`='{$m['Amount']}'
                        ,`ChancesCsv`='{$m['Chances']}'
-                       ON DUPLICATE KEY UPDATE
-                       `Name`='{$m['Name']}'
-                       ,`Sortcode`='{$m['SortCode']}'
-                       ,`Account`='{$m['Account']}'
-                       ,`StartDate`='{$m['StartDate']}'
-                       ,`Freq`='{$m['Freq']}'
-                       ,`Amount`='{$m['Amount']}'
-                       ,`ChancesCsv`='{$m['Chances']}'
+                      ON DUPLICATE KEY UPDATE
+                       `ClientRef`='{$m['ClientRef']}'
                       ;
                     ";
                     echo $sql."\n";
+                    // Insert a new mandate at this end
                     $this->connection->query ($sql);
                     try {
-                        // Insert a new mandate at both ends
+                        // Insert a new mandate at that end
                         $this->insert_mandate ($m);
                         $ok = true;
                     }
@@ -409,10 +402,10 @@ $this->test_schedule ();
                 $bad++;
                 $body .= $m['ClientRef']." FAIL\n";
                 if (!array_key_exists('CustomerGuid',$m) || !$m['CustomerGuid']) {
-                    $body .= "No Customer created. ";
+                    $body .= "No customer entity created. ";
                 }
                 elseif (!array_key_exists('ContractGuid',$m) || !$m['ContractGuid']) {
-                    $body .= "No Contract created. ";
+                    $body .= "No contract entity created. ";
                 }
                 if (array_key_exists('FailReason',$m) && $m['FailReason']) {
                     $body .= $m['FailReason']."\n";
