@@ -270,6 +270,7 @@ class PayApi {
               ;
             ";
             try {
+                echo $sql."\n";
                 $this->connection->query ($sql);
             }
             catch (\mysqli_sql_exception $e) {
@@ -293,6 +294,7 @@ class PayApi {
               ;
             ";
             try {
+                echo $sql."\n";
                 $result = $this->connection->query ($sql);
                 if ($this->connection->affected_rows!=1) {
                     $this->error_log (126,"API update mandate [1] '{$m['ClientRef']}' - no affected rows");
@@ -327,6 +329,7 @@ class PayApi {
           ;
         ";
         try {
+            echo $sql."\n";
             $result = $this->connection->query ($sql);
             if ($this->connection->affected_rows!=1) {
                 $this->error_log (126,"API update mandate [3] '{$m['ClientRef']}' - no affected rows");
