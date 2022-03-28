@@ -286,6 +286,10 @@ $this->test_schedule ();
             $this->put_contract ($m);
         }
         // The local bit
+        if (!array_key_exists('ContractGuid',$mandate) || !$mandate['ContractGuid']) {
+            throw new \Exception ("Cannot insert mandate {$m['ClientRef']} without contract GUID");
+            return false;
+        }
         $sql = "
           UPDATE `paysuite_mandate`
           SET
@@ -331,6 +335,7 @@ $this->test_schedule ();
               LIMIT 0,1
               ;
             ";
+            $ok = false;
             try {
                 $result = $this->connection->query ($sql);
                 if ($result->num_rows==0) {
@@ -362,23 +367,21 @@ $this->test_schedule ();
                     try {
                         // Insert a new mandate at both ends
                         $this->insert_mandate ($m);
+                        $ok = true;
                     }
                     catch (\Exception $e) {
-                        $this->error_log (125,'API insert mandate failed: '.$e->getMessage());
-                        throw new \Exception ('API insert mandate failed: '.$e->getMessage());
-                        return false;
+                        $this->error_log (125,'insert_mandate() failed: '.$e->getMessage());
                     }
                 }
             }
             catch (\mysqli_sql_exception $e) {
                 $this->error_log (124,'SQL insert failed: '.$e->getMessage());
-                throw new \Exception ('SQL insert failed: '.$e->getMessage());
-                return false;
             }
-            if ($m['ContractGuid']) {
+            if ($ok) {
                 $good++;
                 $body .= $m['ClientRef']." SUCCESS\n";
-            } else {
+            }
+            else {
                 $bad++;
                 $body .= $m['ClientRef']." FAIL\n";
                 if (!$m['CustomerGuid']) {
@@ -462,6 +465,9 @@ $this->test_schedule ();
         if (isset($response->ErrorCode)) {
             $mandate['FailReason'] = $response->ErrorCode.'. '.$response->Message.': '.$response->Detail;
             if (strpos($response->Detail, 'existing Customer')) {
+
+// Need to fetch and set $mandate['CustomerGuid']
+
                 return true;
             }
             return false;
