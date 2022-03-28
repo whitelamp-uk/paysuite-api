@@ -340,7 +340,7 @@ $this->test_schedule ();
                 $result = $this->connection->query ($sql);
                 if ($result->num_rows==0) {
                     // This is a new mandate
-                    $start_date = collection_startdate (date('Y-m-d'),$m['PayDay']);
+                    $m['StartDate'] = collection_startdate (date('Y-m-d'),$m['PayDay']);
                     $sql = "
                       INSERT INTO `paysuite_mandate`
                       SET
@@ -348,7 +348,7 @@ $this->test_schedule ();
                        ,`Name`='{$m['Name']}'
                        ,`Sortcode`='{$m['SortCode']}'
                        ,`Account`='{$m['Account']}'
-                       ,`StartDate`='$start_date'
+                       ,`StartDate`='{$m['StartDate']}'
                        ,`Freq`='{$m['Freq']}'
                        ,`Amount`='{$m['Amount']}'
                        ,`ChancesCsv`='{$m['Chances']}'
@@ -356,7 +356,7 @@ $this->test_schedule ();
                        `Name`='{$m['Name']}'
                        ,`Sortcode`='{$m['SortCode']}'
                        ,`Account`='{$m['Account']}'
-                       ,`StartDate`='$start_date'
+                       ,`StartDate`='{$m['StartDate']}'
                        ,`Freq`='{$m['Freq']}'
                        ,`Amount`='{$m['Amount']}'
                        ,`ChancesCsv`='{$m['Chances']}'
@@ -493,15 +493,13 @@ $this->test_schedule ();
             return false;
         }
         $customer_guid = $mandate['CustomerGuid'];
-        $start_date = collection_startdate (date('Y-m-d'),$mandate['PayDay']); // returns Y-m-d
 
-        $start_date = str_replace('-', '', $start_date); // strip dashes 
-        $paymentMonthInYear = intval(substr($start_date, 4, 2));
-        $paymentDayInMonth = intval(substr($start_date, 6, 2));
+        $paymentMonthInYear = intval (substr($mandate['StartDate'], 5, 2));
+        $paymentDayInMonth = intval (substr($mandate['StartDate'], 8, 2));
 
         $details = [
             "scheduleName" => PST_SCHEDULE, // required (Either Name or ID) 
-            "start" => $start_date."T00:00:00.000", // required, yes the docs say to pass a microsecond value!
+            "start" => $mandate['StartDate']."T00:00:00.000", // docs say to pass a microsecond value!
             "isGiftAid" => "false", // required 
             "amount" => $mandate['Amount'],
             "paymentMonthInYear" => $paymentMonthInYear, // must match start date
@@ -510,9 +508,9 @@ $this->test_schedule ();
             "atTheEnd" => "Switch to Further Notice", // required 
             "additionalReference" => $mandate['Chances'], // used for chances
         ];
-        print_r($details);
-        $response = $this->curl_post('customer/'.$customer_guid.'/contract', $details);
-        print_r($response); // for now, dump to log file
+        print_r ($details);
+        $response = $this->curl_post ('customer/'.$customer_guid.'/contract',$details);
+        print_r ($response); // for now, dump to log file
 
         if (isset($response->error)) {
             $mandate['FailReason'] = $response->error;
