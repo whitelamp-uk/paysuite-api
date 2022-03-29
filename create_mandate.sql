@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS `paysuite_mandate` (
   `MandateCreated` timestamp DEFAULT CURRENT_TIMESTAMP,
   `CustomerGuid` char(36) CHARACTER SET ascii DEFAULT NULL,
   `ContractGuid` char(36) CHARACTER SET ascii DEFAULT NULL,
-  `DDRefOrig` bigint(20) unsigned DEFAULT NULL,
+  `DDRefOrig` char(64) CHARACTER SET ascii DEFAULT NULL,
   `ClientRef` char(255) CHARACTER SET ascii DEFAULT NULL,
   `Name` varchar(255) DEFAULT NULL,
   `Sortcode` varchar(255) DEFAULT NULL,

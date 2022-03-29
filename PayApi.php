@@ -430,13 +430,13 @@ class PayApi {
             $sql = "
               INSERT INTO `paysuite_collection`
               SET
-                `DDRefOrig`='{$esc["DDRefOrig"]}'
+                `MandateId`='{$esc["MandateId"]}'
                ,`ClientRef`='{$esc["ClientRef"]}'
                ,`PaymentGuid`='{$esc["payment_guid"]}'
                ,`DateDue`='{$esc["date_collected"]}'
                ,`Amount`='{$esc["amount"]}'
               ON DUPLICATE KEY UPDATE
-               `DDRefOrig`='{$esc["DDRefOrig"]}'
+                `MandateId`='{$esc["MandateId"]}'
                ,`ClientRef`='{$esc["ClientRef"]}'
                ,`DateDue`='{$esc["date_collected"]}'
                ,`Amount`='{$esc["amount"]}'
@@ -478,6 +478,7 @@ class PayApi {
         }
         $sql                = "INSERT INTO `".PST_TABLE_MANDATE."`\n";
         $sql               .= file_get_contents (__DIR__.'/select_mandate.sql');
+        $sql                = str_replace ('{{PST_REFNO_OFFSET}}',PST_REFNO_OFFSET);
         echo $sql;
         try {
             $this->connection->query ($sql);

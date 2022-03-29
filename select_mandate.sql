@@ -3,7 +3,7 @@
 SELECT
   'PST'
  ,null
- ,CONCAT(`DDRefOrig`,'')
+ ,`MandateId`+{{PST_REFNO_OFFSET}}
  ,`ClientRef`
  ,`MandateCreated`
  ,`Updated`
@@ -21,8 +21,8 @@ SELECT
  ,`MandateCreated`
  ,`StartDate`
 FROM `paysuite_mandate`
-WHERE `ContractGuid` IS NOT NULL
-  AND `ContractGuid`!=''
+WHERE LENGTH(`ContractGuid`)>0
+  AND LENGTH(`DDRefOrig`)>0
 GROUP BY `MandateId`
 ORDER BY `MandateId`
 ;
