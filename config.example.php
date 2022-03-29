@@ -2,6 +2,7 @@
 
 define ( 'BLOTTO_PAY_API_PST',          '/some/paysuite-api/PayApi.php'   );
 define ( 'BLOTTO_PAY_API_PST_CLASS',    '\Blotto\Paysuite\PayApi'         );
+define ( 'BLOTTO_PAY_API_PST_SELECT',   'SELECT DISTINCT(`ClientRef`) AS `crf` FROM `paysuite_mandate` WHERE LENGTH(`ContractGuid`)>0' );
 
 define ( 'PST_LIVE_URL',                'https://ecm3.eazycollect.co.uk/api/v3/client/client_code/' );
 define ( 'PST_LIVE_API_KEY',            '*************************'       );
