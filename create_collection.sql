@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS `paysuite_collection` (
   KEY `CollectionCreated` (`CollectionCreated`),
   KEY `DateDue` (`DateDue`),
   KEY `Amount` (`Amount`),
-  CONSTRAINT `paysuite_collection_ibfk_1` FOREIGN KEY (`MandateId`) REFERENCES `paysuite_mandate` (`MandateId`)
+  CONSTRAINT `paysuite_collection_ibfk_1` FOREIGN KEY (`MandateId`) REFERENCES `paysuite_mandate` (`MandateId`),
   CONSTRAINT `paysuite_collection_ibfk_2` FOREIGN KEY (`ClientRef`) REFERENCES `paysuite_mandate` (`ClientRef`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
 ;
