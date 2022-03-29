@@ -226,7 +226,7 @@ class PayApi {
         // Get all the mandates
         $sql = "
           SELECT
-           `ContractGuid`
+            `ContractGuid`
            ,`ClientRef`
           FROM `paysuite_mandate`
           ORDER BY `MandateId`
@@ -235,7 +235,7 @@ class PayApi {
             $result = $this->connection->query ($sql);
             while ($m=$result->fetch_assoc()) {
                 // Insert recent collections for this mandate
-                $this->insert_collections ($m);
+                $this->load_collections ($m);
             }
         }
         catch (\mysqli_sql_exception $e) {
@@ -247,43 +247,9 @@ class PayApi {
         $this->output_collections ();
     }
 
-    private function insert_collections ($m)  {
-        // The remote bit
-        $collections = $this->fetch_collections ($m);
-        // The local bit
-        foreach ($collections as $c) {
-            // Payment GUID is unique so we do an update
-            $sql = "
-              INSERT INTO `paysuite_collection`
-              SET
-               `DDRefOrig`='{$m["DDRefOrig"]}'
-               ,`ClientRef`='{$m["ClientRef"]}'
-               ,`PaymentGuid`='{$c["payment_guid"]}'
-               ,`DateDue`='{$c["date_collected"]}'
-               ,`Amount`='{$c["amount"]}'
-              ON DUPLICATE KEY UPDATE
-               `DDRefOrig`='{$m["DDRefOrig"]}'
-               ,`ClientRef`='{$m["ClientRef"]}'
-               ,`DateDue`='{$c["date_collected"]}'
-               ,`Amount`='{$c["amount"]}'
-              LIMIT 1
-              ;
-            ";
-            try {
-                echo $sql."\n";
-                $this->connection->query ($sql);
-            }
-            catch (\mysqli_sql_exception $e) {
-                $this->error_log (124,"API insert collection '{$m['ClientRef']}-{$c["payment_guid"]}' failed: ".$e->getMessage());
-                throw new \Exception ("API insert collection '{$m['ClientRef']}-{$c["payment_guid"]}' failed: ".$e->getMessage());
-                return false;
-            }
-        }
-    }
-
     private function insert_mandate ($m)  {
         // Customer ( == player )
-        if (!$m['CustomerGuid']) {
+        if (!array_key_exists('CustomerGuid',$m) || !$m['CustomerGuid']) {
             $this->put_customer ($m);
             if (!$m['CustomerGuid']) {
                 throw new \Exception ("Cannot complete mandate {$m['ClientRef']} without customer GUID");
@@ -313,7 +279,7 @@ class PayApi {
             }
         }
         // Contract ( == mandate )
-        if (!$m['ContractGuid']) {
+        if (!array_key_exists('ContractGuid',$m) || !$m['ContractGuid']) {
             $this->put_contract ($m);
             if (!$m['ContractGuid']) {
                 throw new \Exception ("Cannot complete mandate {$m['ClientRef']} without contract GUID");
@@ -386,7 +352,7 @@ class PayApi {
                        ,`Amount`='{$m['Amount']}'
                        ,`ChancesCsv`='{$m['Chances']}'
                       ON DUPLICATE KEY UPDATE
-                       `ClientRef`='{$m['ClientRef']}'
+                        `ClientRef`='{$m['ClientRef']}'
                       ;
                     ";
                     echo $sql."\n";
@@ -435,6 +401,40 @@ class PayApi {
         $subj = "Paysuite insert mandates for ".strtoupper(BLOTTO_ORG_USER).", $good good, $bad bad";
         mail (BLOTTO_EMAIL_WARN_TO,$subj,$body);
         return true;
+    }
+
+    private function load_collections ($m)  {
+        // The remote bit
+        $collections = $this->fetch_collections ($m);
+        // The local bit
+        foreach ($collections as $c) {
+            // Payment GUID is unique so we do an update
+            $sql = "
+              INSERT INTO `paysuite_collection`
+              SET
+               `DDRefOrig`='{$m["DDRefOrig"]}'
+               ,`ClientRef`='{$m["ClientRef"]}'
+               ,`PaymentGuid`='{$c["payment_guid"]}'
+               ,`DateDue`='{$c["date_collected"]}'
+               ,`Amount`='{$c["amount"]}'
+              ON DUPLICATE KEY UPDATE
+               `DDRefOrig`='{$m["DDRefOrig"]}'
+               ,`ClientRef`='{$m["ClientRef"]}'
+               ,`DateDue`='{$c["date_collected"]}'
+               ,`Amount`='{$c["amount"]}'
+              LIMIT 1
+              ;
+            ";
+            try {
+                echo $sql."\n";
+                $this->connection->query ($sql);
+            }
+            catch (\mysqli_sql_exception $e) {
+                $this->error_log (124,"API insert collection '{$m['ClientRef']}-{$c["payment_guid"]}' failed: ".$e->getMessage());
+                throw new \Exception ("API insert collection '{$m['ClientRef']}-{$c["payment_guid"]}' failed: ".$e->getMessage());
+                return false;
+            }
+        }
     }
 
     private function output_collections ( ) {
