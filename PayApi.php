@@ -379,8 +379,9 @@ class PayApi {
                 else {
                     // This is already a row in paysuite_mandate
                     $row = $result->fetch_assoc ();
-                    $m['CustomerGuid'] = $row['CustomerGuid'];
-                    $m['ContractGuid'] = $row['ContractGuid'];
+                    $m['CustomerGuid']  = $row['CustomerGuid'];
+                    $m['ContractGuid']  = $row['ContractGuid'];
+                    $m['Name']          = $row['Name']; // Sanitised at insert above
                 }
                 try {
                     // Insert a new mandate at that end
