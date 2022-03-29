@@ -362,6 +362,7 @@ class PayApi {
                     }
                     catch (\mysqli_sql_exception $e) {
                         $this->error_log (118,'SQL insert failed: '.$e->getMessage());
+                        fwrite (STDERR,"SQL insert failed: ".$e->getMessage()."\n");
                     }
                 }
                 else {
