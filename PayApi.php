@@ -78,7 +78,7 @@ class PayApi {
         curl_setopt_array ($ch,$options+$defaults);
 
         if (!$result=curl_exec($ch)) {
-            $this->error_log (125,curl_error($ch));
+            $this->error_log (127,curl_error($ch));
             throw new \Exception ("cURL error ".print_r(curl_error($ch), true));
             return false;
         }
@@ -239,7 +239,7 @@ class PayApi {
             }
         }
         catch (\mysqli_sql_exception $e) {
-            $this->error_log (126,'SQL execute failed: '.$e->getMessage());
+            $this->error_log (125,'SQL execute failed: '.$e->getMessage());
             throw new \Exception ('SQL execution error');
             return false;
         }
@@ -274,7 +274,7 @@ class PayApi {
                 $this->connection->query ($sql);
             }
             catch (\mysqli_sql_exception $e) {
-                $this->error_log (125,"API insert collection '{$m['ClientRef']}-{$c["payment_guid"]}' failed: ".$e->getMessage());
+                $this->error_log (124,"API insert collection '{$m['ClientRef']}-{$c["payment_guid"]}' failed: ".$e->getMessage());
                 throw new \Exception ("API insert collection '{$m['ClientRef']}-{$c["payment_guid"]}' failed: ".$e->getMessage());
                 return false;
             }
@@ -285,6 +285,10 @@ class PayApi {
         // Customer ( == player )
         if (!$m['CustomerGuid']) {
             $this->put_customer ($m);
+            if (!$m['CustomerGuid']) {
+                throw new \Exception ("Cannot complete mandate {$m['ClientRef']} without customer GUID");
+                return false;
+            }
             $sql = "
               UPDATE `paysuite_mandate`
               SET
@@ -297,50 +301,49 @@ class PayApi {
                 echo $sql."\n";
                 $result = $this->connection->query ($sql);
                 if ($this->connection->affected_rows!=1) {
-                    $this->error_log (126,"API update mandate [1] '{$m['ClientRef']}' - no affected rows");
+                    $this->error_log (123,"API update mandate [1] '{$m['ClientRef']}' - no affected rows");
                     throw new \Exception ("API update mandate [1] '{$m['ClientRef']}' - no affected rows");
                     return false;
                 }
             }
             catch (\mysqli_sql_exception $e) {
-                $this->error_log (125,"API update mandate [2] '{$m['ClientRef']}' failed: ".$e->getMessage());
+                $this->error_log (122,"API update mandate [2] '{$m['ClientRef']}' failed: ".$e->getMessage());
                 throw new \Exception ("API update mandate [2] '{$m['ClientRef']}' failed: ".$e->getMessage());
                 return false;
             }
         }
         // Contract ( == mandate )
-        if ($m['ContractGuid']) {
-            return true;
-        }
-        $this->put_contract ($m);
-        if (!$mandate['ContractGuid']) {
-            throw new \Exception ("Cannot complete mandate {$m['ClientRef']} without contract GUID");
-            return false;
-        }
-        $sql = "
-          UPDATE `paysuite_mandate`
-          SET
-            `ContractGuid`='{$m["ContractGuid"]}'
-           ,`DDRefOrig`='{$m["DDRefOrig"]}'
-           ,`Status` = '{$m["Status"]}'
-           ,`FailReason` = '{$m["FailReason"]}'
-          WHERE `ClientRef`='{$m['ClientRef']}'
-          LIMIT 1
-          ;
-        ";
-        try {
-            echo $sql."\n";
-            $result = $this->connection->query ($sql);
-            if ($this->connection->affected_rows!=1) {
-                $this->error_log (126,"API update mandate [3] '{$m['ClientRef']}' - no affected rows");
-                throw new \Exception ("API update mandate [3] '{$m['ClientRef']}' - no affected rows");
+        if (!$m['ContractGuid']) {
+            $this->put_contract ($m);
+            if (!$m['ContractGuid']) {
+                throw new \Exception ("Cannot complete mandate {$m['ClientRef']} without contract GUID");
                 return false;
             }
-        }
-        catch (\mysqli_sql_exception $e) {
-            $this->error_log (125,"API update mandate [4] '{$m['ClientRef']}' failed: ".$e->getMessage());
-            throw new \Exception ("API update mandate [4] '{$m['ClientRef']}' failed: ".$e->getMessage());
-            return false;
+            $sql = "
+              UPDATE `paysuite_mandate`
+              SET
+                `ContractGuid`='{$m["ContractGuid"]}'
+               ,`DDRefOrig`='{$m["DDRefOrig"]}'
+               ,`Status` = '{$m["Status"]}'
+               ,`FailReason` = '{$m["FailReason"]}'
+              WHERE `ClientRef`='{$m['ClientRef']}'
+              LIMIT 1
+              ;
+            ";
+            try {
+                echo $sql."\n";
+                $result = $this->connection->query ($sql);
+                if ($this->connection->affected_rows!=1) {
+                    $this->error_log (121,"API update mandate [3] '{$m['ClientRef']}' - no affected rows");
+                    throw new \Exception ("API update mandate [3] '{$m['ClientRef']}' - no affected rows");
+                    return false;
+                }
+            }
+            catch (\mysqli_sql_exception $e) {
+                $this->error_log (120,"API update mandate [4] '{$m['ClientRef']}' failed: ".$e->getMessage());
+                throw new \Exception ("API update mandate [4] '{$m['ClientRef']}' failed: ".$e->getMessage());
+                return false;
+            }
         }
     }
 
@@ -363,8 +366,13 @@ class PayApi {
             $ok = false;
             try {
                 $result = $this->connection->query ($sql);
+            }
+            catch (\mysqli_sql_exception $e) {
+                $this->error_log (119,'SQL select failed: '.$e->getMessage());
+            }
+            if ($result) {
                 if ($result->num_rows==0) {
-                    // This is a new mandate
+                    // This is a new row for paysuite_mandate
                     $m['StartDate'] = collection_startdate (date('Y-m-d'),$m['PayDay']);
                     $sql = "
                       INSERT INTO `paysuite_mandate`
@@ -383,19 +391,27 @@ class PayApi {
                     ";
                     echo $sql."\n";
                     // Insert a new mandate at this end
-                    $this->connection->query ($sql);
                     try {
-                        // Insert a new mandate at that end
-                        $this->insert_mandate ($m);
-                        $ok = true;
+                        $this->connection->query ($sql);
                     }
-                    catch (\Exception $e) {
-                        $this->error_log (125,'insert_mandate() failed: '.$e->getMessage());
+                    catch (\mysqli_sql_exception $e) {
+                        $this->error_log (118,'SQL insert failed: '.$e->getMessage());
                     }
                 }
-            }
-            catch (\mysqli_sql_exception $e) {
-                $this->error_log (124,'SQL insert failed: '.$e->getMessage());
+                else {
+                    // This is already a row in paysuite_mandate
+                    $row = $result->fetch_assoc ();
+                    $m['CustomerGuid'] = $row['CustomerGuid'];
+                    $m['ContractGuid'] = $row['ContractGuid'];
+                }
+                try {
+                    // Insert a new mandate at that end
+                    $this->insert_mandate ($m);
+                    $ok = true;
+                }
+                catch (\Exception $e) {
+                    $this->error_log (117,'insert_mandate() failed: '.$e->getMessage());
+                }
             }
             if ($ok) {
                 $good++;
@@ -431,7 +447,7 @@ class PayApi {
             tee ("Output {$this->connection->affected_rows} collections\n");
         }
         catch (\mysqli_sql_exception $e) {
-            $this->error_log (125,'SQL insert failed: '.$e->getMessage());
+            $this->error_log (116,'SQL insert failed: '.$e->getMessage());
             throw new \Exception ('SQL error');
             return false;
         }
@@ -450,81 +466,36 @@ class PayApi {
             tee ("Output {$this->connection->affected_rows} mandates\n");
         }
         catch (\mysqli_sql_exception $e) {
-            $this->error_log (124,'SQL insert failed: '.$e->getMessage());
+            $this->error_log (115,'SQL insert failed: '.$e->getMessage());
             throw new \Exception ('SQL error '.$e->getMessage());
             return false;
         }
     }
 
-    private function put_customer (&$mandate) {
-        // required.
-        $sort = preg_replace('/\D/', '', $mandate['SortCode']);
-        $details = [
-            "Email" => $mandate['Email'],
-            "Title" => $mandate['Title'],
-            "CustomerRef" => $mandate['ClientRef'], // client_ref
-            "FirstName" => $mandate['NamesGiven'],
-            "Surname" => $mandate['NamesFamily'],
-            "Line1" => substr($mandate['AddressLine1'], 0, 50),
-            "Line2" => substr($mandate['AddressLine2'], 0, 30),
-            "PostCode" => $mandate['Postcode'],
-            "AccountNumber" => $mandate['Account'],
-            "BankSortCode" => $sort,
-            "AccountHolderName" => $mandate['Name']
-        ];
-        //optional
-        if (strlen($mandate['AddressLine3'])) {
-            $details['Line3'] = substr($mandate['AddressLine3'], 0, 30);
-        }
-
-        $response = $this->curl_post('customer', $details);
-        print_r($response); // for now, dump to log file
-
-        $mandate['FailReason'] = "";
-        if (isset( $response->error)) { // e.g.  The requested resource is not found
-            $mandate['FailReason'] = $response->error;
-            throw new \Exception ($mandate['FailReason']);
-            return false;
-        }
-        if (isset( $response->ErrorCode)) { // e.g. badly formatted date
-            $mandate['FailReason'] = $response->ErrorCode.'. '.$response->Message.': '.$response->Detail;
-            throw new \Exception ($mandate['FailReason']);
-            return false;
-        }
-
-        $mandate['CustomerGuid'] = $response->Id;    
-        return true;
-    }
-
-
     private function put_contract (&$mandate) {
-        print_r($mandate);
+        $mandate['FailReason'] = "";
+        print_r ($mandate);
         if (!array_key_exists('CustomerGuid',$mandate) || !$mandate['CustomerGuid']) {
             throw new \Exception ("Cannot put contract for {$mandate['ClientRef']} without a customer GUID");
             return false;
         }
-        $customer_guid = $mandate['CustomerGuid'];
-
         $paymentMonthInYear = intval (substr($mandate['StartDate'], 5, 2));
         $paymentDayInMonth = intval (substr($mandate['StartDate'], 8, 2));
-
         $details = [
-            "scheduleName" => PST_SCHEDULE, // required (Either Name or ID) 
-            "start" => $mandate['StartDate']."T00:00:00.000", // docs say to pass a microsecond value!
-            "isGiftAid" => "false", // required 
-            "amount" => $mandate['Amount'],
-            "paymentMonthInYear" => $paymentMonthInYear, // must match start date
-            "paymentDayInMonth" => $paymentDayInMonth,  // must match start date
-            "terminationType" => "Until further notice", // required 
-            "atTheEnd" => "Switch to Further Notice", // required 
-            "additionalReference" => $mandate['Chances'], // used for chances
+            'scheduleName' => PST_SCHEDULE, // required (Either Name or ID) 
+            'start' => $mandate['StartDate'].'T00:00:00.000', // docs say to pass a microsecond value!
+            'isGiftAid' => 'false', // required 
+            'amount' => $mandate['Amount'],
+            'paymentMonthInYear' => $paymentMonthInYear, // must match start date
+            'paymentDayInMonth' => $paymentDayInMonth,  // must match start date
+            'terminationType' => 'Until further notice', // required 
+            'atTheEnd' => 'Switch to Further Notice', // required 
+            'additionalReference' => $mandate['Chances'], // used for chances
         ];
         print_r ($details);
-        $response = $this->curl_post ('customer/'.$customer_guid.'/contract',$details);
+        $response = $this->curl_post ("customer/{$mandate['CustomerGuid']}/contract",$details);
         print_r ($response); // for now, dump to log file
-
-        $mandate['FailReason'] = "";
-
+        // two stages of error handling because Paysuite give us two independent error types
         if (isset( $response->error)) { // e.g.  The requested resource is not found
             $mandate['FailReason'] = $response->error;
             throw new \Exception ($mandate['FailReason']);
@@ -535,16 +506,54 @@ class PayApi {
             throw new \Exception ($mandate['FailReason']);
             return false;
         }
-
         $mandate['ContractGuid'] = $response->Id;    
         $mandate['DDRefOrig'] = $response->DirectDebitRef;    
+        return true;
+    }
+
+    private function put_customer (&$mandate) {
+        // required
+        $mandate['FailReason'] = '';
+        $sort = preg_replace ('/\D/', '', $mandate['SortCode']);
+        $details = [
+            'Email' => $mandate['Email'],
+            'Title' => $mandate['Title'],
+            'CustomerRef' => $mandate['ClientRef'], // client_ref
+            'FirstName' => $mandate['NamesGiven'],
+            'Surname' => $mandate['NamesFamily'],
+// TODO: confirm these lengths are different
+            'Line1' => substr($mandate['AddressLine1'], 0, 50),
+            'Line2' => substr($mandate['AddressLine2'], 0, 30),
+            'PostCode' => $mandate['Postcode'],
+            'AccountNumber' => $mandate['Account'],
+            'BankSortCode' => $sort,
+            'AccountHolderName' => $mandate['Name']
+        ];
+        // optional
+        if (strlen($mandate['AddressLine3'])) {
+            $details['Line3'] = substr($mandate['AddressLine3'], 0, 30);
+        }
+        $response = $this->curl_post ('customer',$details);
+        print_r ($response); // for now, dump to log file
+        // two stages of error handling because Paysuite give us two independent error types
+        if (isset( $response->error)) { // e.g.  The requested resource is not found
+            $mandate['FailReason'] = $response->error;
+            throw new \Exception ($mandate['FailReason']);
+            return false;
+        }
+        if (isset( $response->ErrorCode)) { // e.g. badly formatted date
+            $mandate['FailReason'] = $response->ErrorCode.'. '.$response->Message.': '.$response->Detail;
+            throw new \Exception ($mandate['FailReason']);
+            return false;
+        }
+        $mandate['CustomerGuid'] = $response->Id;    
         return true;
     }
 
     private function setup ( ) {
         foreach ($this->constants as $c) {
             if (!defined($c)) {
-                $this->error_log (123,"$c not defined");
+                $this->error_log (114,"$c not defined");
                 throw new \Exception ('Configuration error');
                 return false;
             }
@@ -556,7 +565,7 @@ class PayApi {
             $this->database = $db['db'];
         }
         catch (\mysqli_sql_exception $e) {
-            $this->error_log (122,'SQL select failed: '.$e->getMessage());
+            $this->error_log (113,'SQL select failed: '.$e->getMessage());
             throw new \Exception ('SQL database error');
             return false;
         }
@@ -582,7 +591,7 @@ class PayApi {
             echo "Inserted {$this->connection->affected_rows} rows into `$tablename`\n";
         }
         catch (\mysqli_sql_exception $e) {
-            $this->error_log (120,'SQL insert failed: '.$e->getMessage());
+            $this->error_log (112,'SQL insert failed: '.$e->getMessage());
             throw new \Exception ('SQL insert error');
             return false;
         }
