@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `paysuite_collection` (
   `Updated` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`CollectionId`),
   UNIQUE KEY `PaymentGuid` (`PaymentGuid`),
-  KEY `DDRefOrig` (`DDRefOrig`),
+  KEY `MandateId` (`MandateId`),
   KEY `ClientRef` (`ClientRef`),
   KEY `CollectionCreated` (`CollectionCreated`),
   KEY `DateDue` (`DateDue`),
