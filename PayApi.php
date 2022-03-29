@@ -340,19 +340,23 @@ class PayApi {
                 if ($result->num_rows==0) {
                     // This is a new row for paysuite_mandate
                     $m['StartDate'] = collection_startdate (date('Y-m-d'),$m['PayDay']);
+                    $esc = [];
+                    foreach ($m as $k=>$v) {
+                        $esc[$k] = $this->connection->real_escape_string ($v);
+                    }
                     $sql = "
                       INSERT INTO `paysuite_mandate`
                       SET
-                        `ClientRef`='{$m['ClientRef']}'
-                       ,`Name`='{$m['Name']}'
-                       ,`Sortcode`='{$m['SortCode']}'
-                       ,`Account`='{$m['Account']}'
-                       ,`StartDate`='{$m['StartDate']}'
-                       ,`Freq`='{$m['Freq']}'
-                       ,`Amount`='{$m['Amount']}'
-                       ,`ChancesCsv`='{$m['Chances']}'
+                        `ClientRef`='{$esc['ClientRef']}'
+                       ,`Name`='{$esc['Name']}'
+                       ,`Sortcode`='{$esc['SortCode']}'
+                       ,`Account`='{$esc['Account']}'
+                       ,`StartDate`='{$esc['StartDate']}'
+                       ,`Freq`='{$esc['Freq']}'
+                       ,`Amount`='{$esc['Amount']}'
+                       ,`ChancesCsv`='{$esc['Chances']}'
                       ON DUPLICATE KEY UPDATE
-                        `ClientRef`='{$m['ClientRef']}'
+                        `ClientRef`='{$esc['ClientRef']}'
                       ;
                     ";
                     echo $sql."\n";
@@ -408,21 +412,28 @@ class PayApi {
         // The remote bit
         $collections = $this->fetch_collections ($m);
         // The local bit
+        $esc = [];
+        foreach ($m as $k=>$v) {
+            $esc[$k] = $this->connection->real_escape_string ($v);
+        }
         foreach ($collections as $c) {
             // Payment GUID is unique so we do an update
+            foreach ($c as $k=>$v) {
+                $esc[$k] = $this->connection->real_escape_string ($v);
+            }
             $sql = "
               INSERT INTO `paysuite_collection`
               SET
-               `DDRefOrig`='{$m["DDRefOrig"]}'
-               ,`ClientRef`='{$m["ClientRef"]}'
-               ,`PaymentGuid`='{$c["payment_guid"]}'
-               ,`DateDue`='{$c["date_collected"]}'
-               ,`Amount`='{$c["amount"]}'
+                `DDRefOrig`='{$esc["DDRefOrig"]}'
+               ,`ClientRef`='{$esc["ClientRef"]}'
+               ,`PaymentGuid`='{$esc["payment_guid"]}'
+               ,`DateDue`='{$esc["date_collected"]}'
+               ,`Amount`='{$esc["amount"]}'
               ON DUPLICATE KEY UPDATE
-               `DDRefOrig`='{$m["DDRefOrig"]}'
-               ,`ClientRef`='{$m["ClientRef"]}'
-               ,`DateDue`='{$c["date_collected"]}'
-               ,`Amount`='{$c["amount"]}'
+               `DDRefOrig`='{$esc["DDRefOrig"]}'
+               ,`ClientRef`='{$esc["ClientRef"]}'
+               ,`DateDue`='{$esc["date_collected"]}'
+               ,`Amount`='{$esc["amount"]}'
               LIMIT 1
               ;
             ";
