@@ -4,7 +4,7 @@ SELECT
   `DateDue`
  ,'PST'
  ,null
- ,`DDRefOrig`
+ ,`MandateId`
  ,`ClientRef`
  ,`Amount`
 FROM `paysuite_collection`
