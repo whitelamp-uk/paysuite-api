@@ -12,6 +12,7 @@ class PayApi {
                 'PST_ERROR_LOG',
                 'PST_FILE_DEBOGON',
                 'PST_PAY_INTERVAL',
+                'PST_REFNO_OFFSET',
                 'PST_TABLE_MANDATE',
                 'PST_TABLE_COLLECTION',
              ];
