@@ -321,6 +321,8 @@ class PayApi {
         $good = $bad = 0; // for summary email
         $body = '';
         foreach ($mandates as $m) {
+            $ok = false;
+            $m['StartDate'] = collection_startdate (date('Y-m-d'),$m['PayDay']);
             $sql = "
               SELECT
                 *
@@ -329,7 +331,6 @@ class PayApi {
               LIMIT 0,1
               ;
             ";
-            $ok = false;
             try {
                 $result = $this->connection->query ($sql);
             }
@@ -339,7 +340,6 @@ class PayApi {
             if ($result) {
                 if ($result->num_rows==0) {
                     // This is a new row for paysuite_mandate
-                    $m['StartDate'] = collection_startdate (date('Y-m-d'),$m['PayDay']);
                     $esc = [];
                     foreach ($m as $k=>$v) {
                         if ($k=='Account') {
