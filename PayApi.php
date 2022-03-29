@@ -479,7 +479,7 @@ class PayApi {
         }
         $sql                = "INSERT INTO `".PST_TABLE_MANDATE."`\n";
         $sql               .= file_get_contents (__DIR__.'/select_mandate.sql');
-        $sql                = str_replace ('{{PST_REFNO_OFFSET}}',PST_REFNO_OFFSET);
+        $sql                = str_replace ('{{PST_REFNO_OFFSET}}',PST_REFNO_OFFSET,$sql);
         echo $sql;
         try {
             $this->connection->query ($sql);
