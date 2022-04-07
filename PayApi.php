@@ -323,74 +323,81 @@ class PayApi {
         $body = '';
         foreach ($mandates as $m) {
             $ok = false;
-            $m['StartDate'] = collection_startdate (date('Y-m-d'),$m['PayDay']);
-            $sql = "
-              SELECT
-                *
-              FROM `paysuite_mandate`
-              WHERE `ClientRef`='{$m['ClientRef']}'
-              LIMIT 0,1
-              ;
-            ";
-            try {
-                $result = $this->connection->query ($sql);
-            }
-            catch (\mysqli_sql_exception $e) {
-                $this->error_log (119,'SQL select failed: '.$e->getMessage());
-            }
-            if ($result) {
-                if ($result->num_rows==0) {
-                    // This is a new row for paysuite_mandate
-                    $esc = [];
-                    foreach ($m as $k=>$v) {
-                        if ($k=='Name') {
-                            // ErrorCode 3 - Account holder name must contain only:
-                            // upper case letters (A-Z), numbers (0-9), full stop (.),
-                            // forward slash (/), dash (-), Ampersand (&) and space
-                            $v = preg_replace ('<[^A-z0-9\./\-& ]>','',$v);
-                        }
-                        $esc[$k] = $this->connection->real_escape_string ($v);
-                    }
-                    $sql = "
-                      INSERT INTO `paysuite_mandate`
-                      SET
-                        `ClientRef`='{$esc['ClientRef']}'
-                       ,`Name`='{$esc['Name']}'
-                       ,`Sortcode`='{$esc['SortCode']}'
-                       ,`Account`='{$esc['Account']}'
-                       ,`StartDate`='{$esc['StartDate']}'
-                       ,`Freq`='{$esc['Freq']}'
-                       ,`Amount`='{$esc['Amount']}'
-                       ,`ChancesCsv`='{$esc['Chances']}'
-                      ON DUPLICATE KEY UPDATE
-                        `ClientRef`='{$esc['ClientRef']}'
-                      ;
-                    ";
-                    echo $sql."\n";
-                    // Insert a new mandate at this end
-                    try {
-                        $this->connection->query ($sql);
-                    }
-                    catch (\mysqli_sql_exception $e) {
-                        $this->error_log (118,'SQL insert failed: '.$e->getMessage());
-                        fwrite (STDERR,"SQL insert failed: ".$e->getMessage()."\n");
-                    }
-                }
-                else {
-                    // This is already a row in paysuite_mandate
-                    $row = $result->fetch_assoc ();
-                    $m['CustomerGuid']  = $row['CustomerGuid'];
-                    $m['ContractGuid']  = $row['ContractGuid'];
-                    $m['Name']          = $row['Name']; // Sanitised at insert above
-                }
+            if ($m['PayDay']) {
+                $m['StartDate'] = collection_startdate (date('Y-m-d'),$m['PayDay']);
+                $sql = "
+                  SELECT
+                    *
+                  FROM `paysuite_mandate`
+                  WHERE `ClientRef`='{$m['ClientRef']}'
+                  LIMIT 0,1
+                  ;
+                ";
                 try {
-                    // Insert a new mandate at that end
-                    $this->insert_mandate ($m);
-                    $ok = true;
+                    $result = $this->connection->query ($sql);
                 }
-                catch (\Exception $e) {
-                    $this->error_log (117,'insert_mandate() failed: '.$e->getMessage());
+                catch (\mysqli_sql_exception $e) {
+                    $this->error_log (119,'SQL select failed: '.$e->getMessage());
                 }
+                if ($result) {
+                    if ($result->num_rows==0) {
+                        // This is a new row for paysuite_mandate
+                        $esc = [];
+                        foreach ($m as $k=>$v) {
+                            if ($k=='Name') {
+                                // ErrorCode 3 - Account holder name must contain only:
+                                // upper case letters (A-Z), numbers (0-9), full stop (.),
+                                // forward slash (/), dash (-), Ampersand (&) and space
+                                $v = preg_replace ('<[^A-z0-9\./\-& ]>','',$v);
+                            }
+                            $esc[$k] = $this->connection->real_escape_string ($v);
+                        }
+                        $sql = "
+                          INSERT INTO `paysuite_mandate`
+                          SET
+                            `ClientRef`='{$esc['ClientRef']}'
+                           ,`Name`='{$esc['Name']}'
+                           ,`Sortcode`='{$esc['SortCode']}'
+                           ,`Account`='{$esc['Account']}'
+                           ,`StartDate`='{$esc['StartDate']}'
+                           ,`Freq`='{$esc['Freq']}'
+                           ,`Amount`='{$esc['Amount']}'
+                           ,`ChancesCsv`='{$esc['Chances']}'
+                          ON DUPLICATE KEY UPDATE
+                            `ClientRef`='{$esc['ClientRef']}'
+                          ;
+                        ";
+                        echo $sql."\n";
+                        // Insert a new mandate at this end
+                        try {
+                            $this->connection->query ($sql);
+                        }
+                        catch (\mysqli_sql_exception $e) {
+                            $this->error_log (118,'SQL insert failed: '.$e->getMessage());
+                            fwrite (STDERR,"SQL insert failed: ".$e->getMessage()."\n");
+                        }
+                    }
+                    else {
+                        // This is already a row in paysuite_mandate
+                        $row = $result->fetch_assoc ();
+                        $m['CustomerGuid']  = $row['CustomerGuid'];
+                        $m['ContractGuid']  = $row['ContractGuid'];
+                        $m['Name']          = $row['Name']; // Sanitised at insert above
+                    }
+                    try {
+                        // Insert a new mandate at that end
+                        $this->insert_mandate ($m);
+                        $ok = true;
+                    }
+                    catch (\Exception $e) {
+                        $this->error_log (117,'insert_mandate() failed: '.$e->getMessage());
+                    }
+                }
+
+            }
+            else {
+                $this->error_log (116,"PayDay={$m['PayDay']} is not valid for ClientRef={$m['ClientRef']}");
+                fwrite (STDERR,"PayDay={$m['PayDay']} is not valid for ClientRef={$m['ClientRef']}\n");
             }
             if ($ok) {
                 $good++;
