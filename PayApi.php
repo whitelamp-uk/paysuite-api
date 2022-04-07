@@ -343,7 +343,7 @@ class PayApi {
                     // This is a new row for paysuite_mandate
                     $esc = [];
                     foreach ($m as $k=>$v) {
-                        if ($k=='Account') {
+                        if ($k=='Name') {
                             // ErrorCode 3 - Account holder name must contain only:
                             // upper case letters (A-Z), numbers (0-9), full stop (.),
                             // forward slash (/), dash (-), Ampersand (&) and space
