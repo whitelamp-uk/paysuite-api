@@ -424,6 +424,7 @@ class PayApi {
     }
 
     private function load_collections ($m)  {
+fwrite (STDERR,"Mandate: ".print_r($m,true));
         // The remote bit
         $collections = $this->fetch_collections ($m);
         // The local bit
@@ -432,10 +433,12 @@ class PayApi {
             $esc[$k] = $this->connection->real_escape_string ($v);
         }
         foreach ($collections as $c) {
+fwrite (STDERR,"Collection: ".print_r($c,true));
             // Payment GUID is unique so we do an update
             foreach ($c as $k=>$v) {
                 $esc[$k] = $this->connection->real_escape_string ($v);
             }
+fwrite (STDERR,"Escaped: ".print_r($esc,true));
             $sql = "
               INSERT INTO `paysuite_collection`
               SET
