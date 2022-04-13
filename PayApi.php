@@ -424,7 +424,13 @@ class PayApi {
     }
 
     private function load_collections ($m)  {
-fwrite (STDERR,"Mandate: ".print_r($m,true));
+return true;
+/* Example:
+$m = [
+    'ContractGuid' => 'b4da372f-893f-47ea-89fb-f90d6c30d370'
+    'ClientRef' => 'BB5273_227740'
+];
+*/
         // The remote bit
         $collections = $this->fetch_collections ($m);
         // The local bit
@@ -433,16 +439,21 @@ fwrite (STDERR,"Mandate: ".print_r($m,true));
             $esc[$k] = $this->connection->real_escape_string ($v);
         }
         foreach ($collections as $c) {
-fwrite (STDERR,"Collection: ".print_r($c,true));
+/* Example:
+$c = [
+    'payment_guid' => '93fef2b8-e553-4a7a-aa88-f17b61bf787a'
+    'date_collected' => '2022-04-15'
+    'amount' => 8.68
+];
+*/
             // Payment GUID is unique so we do an update
             foreach ($c as $k=>$v) {
                 $esc[$k] = $this->connection->real_escape_string ($v);
             }
-fwrite (STDERR,"Escaped: ".print_r($esc,true));
             $sql = "
               INSERT INTO `paysuite_collection`
               SET
-                `MandateId`='{$esc["MandateId"]}'
+                `MandateId`='{$esc["MandateId"]}' -- No such array key
                ,`ClientRef`='{$esc["ClientRef"]}'
                ,`PaymentGuid`='{$esc["payment_guid"]}'
                ,`DateDue`='{$esc["date_collected"]}'
