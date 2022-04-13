@@ -352,6 +352,7 @@ mail (BLOTTO_EMAIL_WARN_TO,"Paysuite collections failure","Collection loading fe
                                 // upper case letters (A-Z), numbers (0-9), full stop (.),
                                 // forward slash (/), dash (-), Ampersand (&) and space
                                 $v = preg_replace ('<[^A-z0-9\./\-& ]>','',$v);
+                                $m[$k] = $v;
                             }
                             $esc[$k] = $this->connection->real_escape_string ($v);
                         }
