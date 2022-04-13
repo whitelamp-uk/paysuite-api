@@ -238,6 +238,9 @@ class PayApi {
                 // Insert recent collections for this mandate
                 $this->load_collections ($m);
             }
+
+mail (BLOTTO_EMAIL_WARN_TO,"Paysuite collections failure","Collection loading feature currently broken");
+
         }
         catch (\mysqli_sql_exception $e) {
             $this->error_log (125,'SQL execute failed: '.$e->getMessage());
