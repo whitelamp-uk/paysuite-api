@@ -578,6 +578,7 @@ $c = [
         if (strlen($mandate['AddressLine3'])) {
             $details['Line3'] = substr($mandate['AddressLine3'], 0, 30);
         }
+        print_r ($details); // for now, dump to log file
         $response = $this->curl_post ('customer',$details);
         print_r ($response); // for now, dump to log file
         // two stages of error handling because Paysuite give us two independent error types
