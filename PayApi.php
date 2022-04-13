@@ -187,11 +187,11 @@ class PayApi {
         $collections = [];
         if (isset($response->Payments)) {
             foreach ($response->Payments as $p) {
-                if ($p['Status'] == 'Paid') { // TODO: ignore recent payments? see docs.
+                if ($p->Status=='Paid') { // TODO: ignore recent payments? see docs.
                     $collections[] = [
-                        'payment_guid' => $p['Id'],
-                        'date_collected' => substr($p['Date'], 0, 10),
-                        'amount' => $p['Amount']
+                        'payment_guid' => $p->Id,
+                        'date_collected' => substr($p->Date, 0, 10),
+                        'amount' => $p->Amount
                     ];
                 }
             }
