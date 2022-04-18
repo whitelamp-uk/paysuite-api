@@ -449,7 +449,8 @@ $c = [
     'amount' => 8.68
 ];
 */
-            // Payment GUID is unique so we do an update
+            // Payment GUID is unique
+            // Do nothing on duplicate key
             foreach ($c as $k=>$v) {
                 $esc[$k] = $this->connection->real_escape_string ($v);
             }
@@ -462,11 +463,7 @@ $c = [
                ,`DateDue`='{$esc["date_collected"]}'
                ,`Amount`='{$esc["amount"]}'
               ON DUPLICATE KEY UPDATE
-                `MandateId`='{$esc["MandateId"]}'
-               ,`ClientRef`='{$esc["ClientRef"]}'
-               ,`DateDue`='{$esc["date_collected"]}'
-               ,`Amount`='{$esc["amount"]}'
-              LIMIT 1
+                `PaymentGuid`='{$esc["payment_guid"]}'
               ;
             ";
             try {
