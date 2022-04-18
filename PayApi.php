@@ -482,6 +482,7 @@ $c = [
         $sql                = "INSERT INTO `".PST_TABLE_COLLECTION."`\n";
         $sql               .= file_get_contents (__DIR__.'/select_collection.sql');
         $sql                = str_replace ('{{PST_PAY_INTERVAL}}',PST_PAY_INTERVAL,$sql);
+        $sql                = str_replace ('{{PST_REFNO_OFFSET}}',PST_REFNO_OFFSET,$sql);
         echo $sql;
         try {
             $this->connection->query ($sql);
