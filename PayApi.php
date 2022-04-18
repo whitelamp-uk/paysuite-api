@@ -227,7 +227,8 @@ class PayApi {
         // Get all the mandates
         $sql = "
           SELECT
-            `ContractGuid`
+            `MandateId`
+           ,`ContractGuid`
            ,`ClientRef`
           FROM `paysuite_mandate`
           ORDER BY `MandateId`
@@ -431,6 +432,7 @@ mail (BLOTTO_EMAIL_WARN_TO,"Paysuite collections failure","Collection loading fe
 return true;
 /* Example:
 $m = [
+    'MandateId' => 1234
     'ContractGuid' => 'b4da372f-893f-47ea-89fb-f90d6c30d370'
     'ClientRef' => 'BB5273_227740'
 ];
@@ -457,7 +459,7 @@ $c = [
             $sql = "
               INSERT INTO `paysuite_collection`
               SET
-                `MandateId`='{$esc["MandateId"]}' -- No such array key
+                `MandateId`='{$esc["MandateId"]}'
                ,`ClientRef`='{$esc["ClientRef"]}'
                ,`PaymentGuid`='{$esc["payment_guid"]}'
                ,`DateDue`='{$esc["date_collected"]}'
