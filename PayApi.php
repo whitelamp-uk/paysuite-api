@@ -324,7 +324,12 @@ class PayApi {
         $body = '';
         foreach ($mandates as $m) {
             $ok = false;
-            if ($m['PayDay']) {
+            if (!in_array($mandate['Freq'],['1','M','Monthly','OneMonthly'])) {
+                $msg = "Freq={$m['Freq']} is not currently supported for ClientRef={$m['ClientRef']}";
+                $this->error_log (119,$msg);
+                fwrite (STDERR,"$msg\n");
+            }
+            elseif ($m['PayDay']) {
                 $m['StartDate'] = collection_startdate (date('Y-m-d'),$m['PayDay']);
                 $sql = "
                   SELECT
@@ -338,7 +343,7 @@ class PayApi {
                     $result = $this->connection->query ($sql);
                 }
                 catch (\mysqli_sql_exception $e) {
-                    $this->error_log (119,'SQL select failed: '.$e->getMessage());
+                    $this->error_log (118,'SQL select failed: '.$e->getMessage());
                 }
                 if ($result) {
                     if ($result->num_rows==0) {
@@ -375,7 +380,7 @@ class PayApi {
                             $this->connection->query ($sql);
                         }
                         catch (\mysqli_sql_exception $e) {
-                            $this->error_log (118,'SQL insert failed: '.$e->getMessage());
+                            $this->error_log (117,'SQL insert failed: '.$e->getMessage());
                             fwrite (STDERR,"SQL insert failed: ".$e->getMessage()."\n");
                         }
                     }
@@ -392,14 +397,15 @@ class PayApi {
                         $ok = true;
                     }
                     catch (\Exception $e) {
-                        $this->error_log (117,'insert_mandate() failed: '.$e->getMessage());
+                        $this->error_log (116,'insert_mandate() failed: '.$e->getMessage());
                     }
                 }
 
             }
             else {
-                $this->error_log (116,"PayDay={$m['PayDay']} is not valid for ClientRef={$m['ClientRef']}");
-                fwrite (STDERR,"PayDay={$m['PayDay']} is not valid for ClientRef={$m['ClientRef']}\n");
+                $msg = "PayDay={$m['PayDay']} is not valid for ClientRef={$m['ClientRef']}";
+                $this->error_log (115,$msg);
+                fwrite (STDERR,"$msg\n");
             }
             if ($ok) {
                 $good++;
@@ -471,7 +477,7 @@ $c = [
                 $this->connection->query ($sql);
             }
             catch (\mysqli_sql_exception $e) {
-                $this->error_log (124,"API insert collection '{$m['ClientRef']}-{$c["payment_guid"]}' failed: ".$e->getMessage());
+                $this->error_log (114,"API insert collection '{$m['ClientRef']}-{$c["payment_guid"]}' failed: ".$e->getMessage());
                 throw new \Exception ("API insert collection '{$m['ClientRef']}-{$c["payment_guid"]}' failed: ".$e->getMessage());
                 return false;
             }
@@ -489,7 +495,7 @@ $c = [
             tee ("Output {$this->connection->affected_rows} collections\n");
         }
         catch (\mysqli_sql_exception $e) {
-            $this->error_log (116,'SQL insert failed: '.$e->getMessage());
+            $this->error_log (113,'SQL insert failed: '.$e->getMessage());
             throw new \Exception ('SQL error');
             return false;
         }
@@ -509,7 +515,7 @@ $c = [
             tee ("Output {$this->connection->affected_rows} mandates\n");
         }
         catch (\mysqli_sql_exception $e) {
-            $this->error_log (115,'SQL insert failed: '.$e->getMessage());
+            $this->error_log (112,'SQL insert failed: '.$e->getMessage());
             throw new \Exception ('SQL error '.$e->getMessage());
             return false;
         }
@@ -557,16 +563,16 @@ $c = [
     private function put_customer (&$mandate) {
         // required
         $mandate['FailReason'] = '';
-        $sort = preg_replace ('/\D/', '', $mandate['SortCode']);
+        $sort = preg_replace ('/\D/','',$mandate['SortCode']);
         $details = [
             'Email' => $mandate['Email'],
             'Title' => $mandate['Title'],
-            'CustomerRef' => $mandate['ClientRef'], // client_ref
+            'CustomerRef' => $mandate['ClientRef'],
             'FirstName' => $mandate['NamesGiven'],
             'Surname' => $mandate['NamesFamily'],
 // TODO: confirm these lengths are different
-            'Line1' => substr($mandate['AddressLine1'], 0, 50),
-            'Line2' => substr($mandate['AddressLine2'], 0, 30),
+            'Line1' => substr ($mandate['AddressLine1'],0,50),
+            'Line2' => substr ($mandate['AddressLine2'],0,30),
             'PostCode' => $mandate['Postcode'],
             'AccountNumber' => $mandate['Account'],
             'BankSortCode' => $sort,
@@ -574,7 +580,7 @@ $c = [
         ];
         // optional
         if (strlen($mandate['AddressLine3'])) {
-            $details['Line3'] = substr($mandate['AddressLine3'], 0, 30);
+            $details['Line3'] = substr ($mandate['AddressLine3'],0,30);
         }
         print_r ($details); // for now, dump to log file
         $response = $this->curl_post ('customer',$details);
@@ -597,7 +603,7 @@ $c = [
     private function setup ( ) {
         foreach ($this->constants as $c) {
             if (!defined($c)) {
-                $this->error_log (114,"$c not defined");
+                $this->error_log (111,"$c not defined");
                 throw new \Exception ('Configuration error');
                 return false;
             }
@@ -609,7 +615,7 @@ $c = [
             $this->database = $db['db'];
         }
         catch (\mysqli_sql_exception $e) {
-            $this->error_log (113,'SQL select failed: '.$e->getMessage());
+            $this->error_log (110,'SQL select failed: '.$e->getMessage());
             throw new \Exception ('SQL database error');
             return false;
         }
@@ -635,7 +641,7 @@ $c = [
             echo "Inserted {$this->connection->affected_rows} rows into `$tablename`\n";
         }
         catch (\mysqli_sql_exception $e) {
-            $this->error_log (112,'SQL insert failed: '.$e->getMessage());
+            $this->error_log (109,'SQL insert failed: '.$e->getMessage());
             throw new \Exception ('SQL insert error');
             return false;
         }
