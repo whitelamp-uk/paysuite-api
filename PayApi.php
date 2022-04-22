@@ -440,6 +440,19 @@ $m = [
     'ClientRef' => 'BB5273_227740'
 ];
 */
+
+
+
+
+// This is only required if balances are needed for draws before the migration can be completed
+//define ( 'PST_MIGRATE_PREG',            null            ); // ClientRefs like this are in transit
+define ( 'PST_MIGRATE_PREG',            '^STG[0-9]+$'   ); // ClientRefs like this are in transit
+define ( 'PST_MIGRATE_DATE',            '2022-05-03'    ); // Pass the pending data to Paysuite (agreed with Paysuite)
+
+
+
+
+
         // The remote bit
         $collections = $this->fetch_collections ($m);
         // The local bit
@@ -528,6 +541,17 @@ $c = [
             throw new \Exception ("Cannot put contract for {$mandate['ClientRef']} without a customer GUID");
             return false;
         }
+        if (PST_MIGRATE_PREG && preg_match('<'.PST_MIGRATE_PREG.'>',$mandate['ClientRef'])) {
+            // This is only required if balances are needed for draws before the migration can be completed
+            if (gmdate('Y-m-d')<PST_MIGRATE_DATE) {
+                // Only pretend to put the mandate until migration day
+                fwrite (STDERR,"WARNING: paysuite-api providing fake contract GUID={$mandate['ClientRef']}\n");
+                $mandate['ContractGuid'] = $mandate['ClientRef'];    
+                fwrite (STDERR,"WARNING: paysuite-api providing fake DDRefOrig={$mandate['ClientRef']}\n");
+                $mandate['DDRefOrig'] = $mandate['ClientRef'];    
+                return true;
+            }
+        }
         $paymentMonthInYear = intval (substr($mandate['StartDate'], 5, 2));
         $paymentDayInMonth = intval (substr($mandate['StartDate'], 8, 2));
         $details = [
@@ -561,8 +585,16 @@ $c = [
     }
 
     private function put_customer (&$mandate) {
-        // required
         $mandate['FailReason'] = '';
+        if (PST_MIGRATE_PREG && preg_match('<'.PST_MIGRATE_PREG.'>',$mandate['ClientRef'])) {
+            // This is only required if balances are needed for draws before the migration can be completed
+            if (gmdate('Y-m-d')<PST_MIGRATE_DATE) {
+                // Only pretend to put the mandate until migration day
+                fwrite (STDERR,"WARNING: paysuite-api providing fake customer GUID={$mandate['ClientRef']}\n");
+                $mandate['CustomerGuid'] = $mandate['ClientRef'];    
+                return true;
+            }
+        }
         $sort = preg_replace ('/\D/','',$mandate['SortCode']);
         $details = [
             'Email' => $mandate['Email'],
@@ -600,10 +632,55 @@ $c = [
         return true;
     }
 
+    public function reset_fakes ( ) {
+        // A migration method
+        if (defined(PST_MIGRATE_PREG) && PST_MIGRATE_PREG) {
+            if (!defined(PST_MIGRATE_DATE) || !PST_MIGRATE_DATE) {
+                $this->error_log (111,'Migration has no PST_MIGRATE_DATE');
+                throw new \Exception ('Migration has no PST_MIGRATE_DATE');
+                return true;
+            }
+            $migrate_date = new \DateTime (PST_MIGRATE_DATE);
+            if ($migrate_date->format('Y-m-d')!=PST_MIGRATE_DATE) {
+                $mandate['FailReason'] = "";
+                $this->error_log (110,'Migration does not understand PST_MIGRATE_DATE='.PST_MIGRATE_DATE);
+                throw new \Exception ('Migration does not understand PST_MIGRATE_DATE='.PST_MIGRATE_DATE);
+                return true;
+            }
+            if (gmdate('Y-m-d')>=PST_MIGRATE_DATE) {
+                // So only when migration day is reached
+                // clear fake datas in order to allow put_*() for creation of migrating customers/contracts
+                $r = PST_MIGRATE_PREG;
+                $t = PST_TABLE_MANDATE;
+                $sql = "
+                  UPDATE `$t`
+                  SET
+                    `CustomerGuid`=''
+                   ,`ContractGuid`=''
+                   ,`DDRefOrig`=''
+                  WHERE `ClientRef` IS NOT NULL
+                    AND LENGTH(`ClientRef`)>0
+                    AND `CustomerGuid`=`ClientRef`
+                    AND `ClientRef` REGEXP '$r'
+                  ;
+                ";
+                try {
+                    $this->connection->query ($sql);
+                }
+                catch (\mysqli_sql_exception $e) {
+                    $this->error_log (109,'SQL update failed: '.$e->getMessage());
+                    throw new \Exception ('SQL update error');
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     private function setup ( ) {
         foreach ($this->constants as $c) {
             if (!defined($c)) {
-                $this->error_log (111,"$c not defined");
+                $this->error_log (108,"$c not defined");
                 throw new \Exception ('Configuration error');
                 return false;
             }
@@ -615,10 +692,11 @@ $c = [
             $this->database = $db['db'];
         }
         catch (\mysqli_sql_exception $e) {
-            $this->error_log (110,'SQL select failed: '.$e->getMessage());
+            $this->error_log (107,'SQL select failed: '.$e->getMessage());
             throw new \Exception ('SQL database error');
             return false;
         }
+        // Missing tables
         $this->execute (__DIR__.'/create_mandate.sql');
         $this->execute (__DIR__.'/create_collection.sql');
     }
@@ -641,7 +719,7 @@ $c = [
             echo "Inserted {$this->connection->affected_rows} rows into `$tablename`\n";
         }
         catch (\mysqli_sql_exception $e) {
-            $this->error_log (109,'SQL insert failed: '.$e->getMessage());
+            $this->error_log (106,'SQL insert failed: '.$e->getMessage());
             throw new \Exception ('SQL insert error');
             return false;
         }
