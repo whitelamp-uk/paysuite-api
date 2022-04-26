@@ -17,14 +17,22 @@ class PayApi {
                 'PST_TABLE_COLLECTION',
              ];
     public   $schedules = [
-                 1 => PST_SCHEDULE_1,
-                 3 => PST_SCHEDULE_3,
-                 6 => PST_SCHEDULE_6,
-                 12 => PST_SCHEDULE_12,
+                 '1' => PST_SCHEDULE_1,
+                 '3' => PST_SCHEDULE_3,
+                 '6' => PST_SCHEDULE_6,
+                 '12' => PST_SCHEDULE_12,
+                 'M' => PST_SCHEDULE_1,
+                 'Q' => PST_SCHEDULE_3,
+                 'S' => PST_SCHEDULE_6,
+                 'Y' => PST_SCHEDULE_12,
                  'Monthly' => PST_SCHEDULE_1,
                  'Quarterly' => PST_SCHEDULE_3,
                  '6 Monthly' => PST_SCHEDULE_6,
                  'Annually' => PST_SCHEDULE_12,
+                 'OneMonthly' => PST_SCHEDULE_1,
+                 'ThreeMonthly' => PST_SCHEDULE_3,
+                 'SixMonthly' => PST_SCHEDULE_6,
+                 'TwelveMonthly' => PST_SCHEDULE_12,
              ];
     public   $database;
     public   $diagnostic;
