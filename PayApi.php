@@ -16,6 +16,16 @@ class PayApi {
                 'PST_TABLE_MANDATE',
                 'PST_TABLE_COLLECTION',
              ];
+    public   $schedules = [
+                 1 => PST_SCHEDULE_1,
+                 3 => PST_SCHEDULE_3,
+                 6 => PST_SCHEDULE_6,
+                 12 => PST_SCHEDULE_12,
+                 'Monthly' => PST_SCHEDULE_1,
+                 'Quarterly' => PST_SCHEDULE_3,
+                 '6 Monthly' => PST_SCHEDULE_6,
+                 'Annually' => PST_SCHEDULE_12,
+             ];
     public   $database;
     public   $diagnostic;
     public   $error;
@@ -552,10 +562,14 @@ $c = [
                 return true;
             }
         }
+        if (!array_key_exists($mandate['Freq'],$this->schedules)) {
+            throw new \Exception ("No schedule found for mandate frequency '{$mandate['Freq']}'");
+            return false;
+        }
         $paymentMonthInYear = intval (substr($mandate['StartDate'], 5, 2));
         $paymentDayInMonth = intval (substr($mandate['StartDate'], 8, 2));
         $details = [
-            'scheduleName' => PST_SCHEDULE, // required (Either Name or ID) 
+            'scheduleName' => $this->schedules[$mandate['Freq']], // required (Either Name or ID)
             'start' => $mandate['StartDate'].'T00:00:00.000', // docs say to pass a microsecond value!
             'isGiftAid' => 'false', // required 
             'amount' => $mandate['Amount'],
