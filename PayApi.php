@@ -334,7 +334,7 @@ class PayApi {
         $body = '';
         foreach ($mandates as $m) {
             $ok = false;
-            if (!in_array($mandate['Freq'],['1','M','Monthly','OneMonthly'])) {
+            if (!in_array($m['Freq'],['1','M','Monthly','OneMonthly'])) {
                 $msg = "Freq={$m['Freq']} is not currently supported for ClientRef={$m['ClientRef']}";
                 $this->error_log (119,$msg);
                 fwrite (STDERR,"$msg\n");
