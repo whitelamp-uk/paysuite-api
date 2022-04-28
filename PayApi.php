@@ -342,7 +342,7 @@ class PayApi {
         $body = '';
         foreach ($mandates as $m) {
             $ok = false;
-            if (!in_array($m['Freq'],['1','M','Monthly','OneMonthly'])) {
+            if (!array_key_exists($m['Freq'],$this->schedules)) {
                 $msg = "Freq={$m['Freq']} is not currently supported for ClientRef={$m['ClientRef']}";
                 $this->error_log (119,$msg);
                 fwrite (STDERR,"$msg\n");
@@ -569,10 +569,6 @@ $c = [
                 $mandate['DDRefOrig'] = $mandate['ClientRef'];    
                 return true;
             }
-        }
-        if (!array_key_exists($mandate['Freq'],$this->schedules)) {
-            throw new \Exception ("No schedule found for mandate frequency '{$mandate['Freq']}'");
-            return false;
         }
         $paymentMonthInYear = intval (substr($mandate['StartDate'], 5, 2));
         $paymentDayInMonth = intval (substr($mandate['StartDate'], 8, 2));
