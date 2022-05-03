@@ -458,19 +458,6 @@ $m = [
     'ClientRef' => 'BB5273_227740'
 ];
 */
-
-
-
-
-// This is only required if balances are needed for draws before the migration can be completed
-//define ( 'PST_MIGRATE_PREG',            null            ); // ClientRefs like this are in transit
-define ( 'PST_MIGRATE_PREG',            '^STG[0-9]+$'   ); // ClientRefs like this are in transit
-define ( 'PST_MIGRATE_DATE',            '2022-05-03'    ); // Pass the pending data to Paysuite (agreed with Paysuite)
-
-
-
-
-
         // The remote bit
         $collections = $this->fetch_collections ($m);
         // The local bit
