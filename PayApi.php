@@ -267,7 +267,7 @@ class PayApi {
         $this->output_collections ();
     }
 
-    private function insert_mandate ($m)  {
+    private function insert_mandate (&$m)  {
         // Customer ( == player )
         if (!array_key_exists('CustomerGuid',$m) || !$m['CustomerGuid']) {
             $this->put_customer ($m);
