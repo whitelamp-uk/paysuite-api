@@ -216,7 +216,7 @@ class PayApi {
             }
         }
         // TODO: or maybe this needs to work by getting all contracts for the customer
-        // In the case of BWH supporter Ivor Bennet, two contracts have been created for one customer
+        // In the case of BWH supporter Ivor Bennett, two contracts have been created for one customer
         // At the time of writing nobody (including me) is admitting responsibility for that happening
         // So perhaps being tolerant of it is the best way...
 /*
