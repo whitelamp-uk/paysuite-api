@@ -199,10 +199,7 @@ class PayApi {
     }
 
     private function fetch_collections ($m) {
-        // TODO: this is where top down should meet bottom up eg return value:
-        $params = ['rows' => 10];
         $response = $this->curl_get ('contract/'.$m['ContractGuid'].'/payment');
-
         $collections = [];
         if (isset($response->Payments)) {
             foreach ($response->Payments as $p) {
@@ -218,6 +215,34 @@ class PayApi {
                 }
             }
         }
+        // TODO: or maybe this needs to work by getting all contracts for the customer
+        // In the case of BWH supporter Ivor Bennet, two contracts have been created for one customer
+        // At the time of writing nobody (including me) is admitting responsibility for that happening
+        // So perhaps being tolerant of it is the best way...
+/*
+        // This is just pseudo-code to make the point
+        $response = $this->curl_get ('customer/'.$m['CustomerGuid'].'/contract');
+        $collections = [];
+        if (isset($response->Contracts)) {
+            foreach ($response->Contracts as $c) {
+                $response2 = $this->curl_get ('contract/'.$c['guid'].'/payment');
+                if (isset($response2->Payments)) {
+                    foreach ($response2->Payments as $p) {
+                        if ($p->Status=='Paid') { // TODO: ignore recent payments? see docs.
+                            $date = substr ($p->Date,0,10);
+                            if ($date<$this->dd_before) { // TODO: made conditional after seeing collections for 2022-06-01 in paysuite_collection when inspecting the data on 2022-05-30
+                                $collections[] = [
+                                    'payment_guid' => $p->Id,
+                                    'date_collected' => $date,
+                                    'amount' => $p->Amount
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+*/
         return $collections;
 
         /*$collections = [
