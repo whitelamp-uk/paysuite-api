@@ -35,6 +35,7 @@ class PayApi {
                  'TwelveMonthly' => PST_SCHEDULE_12,
              ];
     public   $database;
+    public   $dd_before;
     public   $diagnostic;
     public   $error;
     public   $errorCode = 0;
@@ -206,11 +207,14 @@ class PayApi {
         if (isset($response->Payments)) {
             foreach ($response->Payments as $p) {
                 if ($p->Status=='Paid') { // TODO: ignore recent payments? see docs.
-                    $collections[] = [
-                        'payment_guid' => $p->Id,
-                        'date_collected' => substr($p->Date, 0, 10),
-                        'amount' => $p->Amount
-                    ];
+                    $date = substr ($p->Date,0,10);
+                    if ($date<$this->dd_before) { // TODO: made conditional after seeing collections for 2022-06-01 in paysuite_collection when inspecting the data on 2022-05-30
+                        $collections[] = [
+                            'payment_guid' => $p->Id,
+                            'date_collected' => $date,
+                            'amount' => $p->Amount
+                        ];
+                    }
                 }
             }
         }
@@ -690,11 +694,16 @@ $c = [
                 return false;
             }
         }
-        $sql                = "SELECT DATABASE() AS `db`";
+        $sql = "
+          SELECT
+            DATABASE() AS `db`
+           ,SELECT DATE_SUB(CURDATE(),INTERVAL ".PST_PAY_INTERVAL.") AS `dd_before`
+        ";
         try {
-            $db             = $this->connection->query ($sql);
-            $db             = $db->fetch_assoc ();
-            $this->database = $db['db'];
+            $db                 = $this->connection->query ($sql);
+            $db                 = $db->fetch_assoc ();
+            $this->database     = $db['db'];
+            $this->dd_before    = $db['dd_before'];
         }
         catch (\mysqli_sql_exception $e) {
             $this->error_log (107,'SQL select failed: '.$e->getMessage());
