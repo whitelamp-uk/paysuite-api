@@ -697,7 +697,7 @@ $c = [
         $sql = "
           SELECT
             DATABASE() AS `db`
-           ,SELECT DATE_SUB(CURDATE(),INTERVAL ".PST_PAY_INTERVAL.") AS `dd_before`
+           ,DATE_SUB(CURDATE(),INTERVAL ".PST_PAY_INTERVAL.") AS `dd_before`
         ";
         try {
             $db                 = $this->connection->query ($sql);
