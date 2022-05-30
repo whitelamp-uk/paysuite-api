@@ -201,7 +201,7 @@ class PayApi {
     private function fetch_collections ($m) {
         // TODO: this is where top down should meet bottom up eg return value:
         $params = ['rows' => 10];
-        $response = $this->curl_get('contract/'.$m['ContractGuid'].'/payment');
+        $response = $this->curl_get ('contract/'.$m['ContractGuid'].'/payment');
 
         $collections = [];
         if (isset($response->Payments)) {
