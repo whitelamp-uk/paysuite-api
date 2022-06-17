@@ -203,15 +203,14 @@ class PayApi {
         $collections = [];
         if (isset($response->Payments)) {
             foreach ($response->Payments as $p) {
-                if ($p->Status=='Paid') { // TODO: ignore recent payments? see docs.
-                    $date = substr ($p->Date,0,10);
-                    if ($date<$this->dd_before) { // TODO: made conditional after seeing collections for 2022-06-01 in paysuite_collection when inspecting the data on 2022-05-30
-                        $collections[] = [
-                            'payment_guid' => $p->Id,
-                            'date_collected' => $date,
-                            'amount' => $p->Amount
-                        ];
-                    }
+                $date = substr ($p->Date,0,10);
+                if ($date<$this->dd_before) { // TODO: made conditional after seeing collections for 2022-06-01 in paysuite_collection when inspecting the data on 2022-05-30
+                    $collections[] = [
+                        'payment_guid' => $p->Id,
+                        'date_collected' => $date,
+                        'amount' => $p->Amount,
+                        'status' => $p->Status,
+                    ];
                 }
             }
         }
@@ -500,6 +499,7 @@ $c = [
     'payment_guid' => '93fef2b8-e553-4a7a-aa88-f17b61bf787a'
     'date_collected' => '2022-04-15'
     'amount' => 8.68
+    'status' => 'Paid' // or 'Unpaid'
 ];
 */
             // Payment GUID is unique
@@ -515,8 +515,11 @@ $c = [
                ,`PaymentGuid`='{$esc["payment_guid"]}'
                ,`DateDue`='{$esc["date_collected"]}'
                ,`Amount`='{$esc["amount"]}'
+               ,`Status`='{$esc["status"]}'
+               ,`OriginalStatus`='{$esc["status"]}'
               ON DUPLICATE KEY UPDATE
-                `PaymentGuid`='{$esc["payment_guid"]}'
+                `Status`='{$esc["status"]}'
+               ,`StatusChanged`=IF(STRCMP('{$esc["status"]}',`OriginalStatus`) = 0, NULL, NOW())
               ;
             ";
             try {

@@ -10,5 +10,6 @@ SELECT
 FROM `paysuite_collection`
 WHERE `DateDue`<DATE_SUB(CURDATE(),INTERVAL {{PST_PAY_INTERVAL}})
   AND `Amount`>0
+  AND `Status`='Paid'
 ORDER BY `DateDue`,`MandateId`
 ;
