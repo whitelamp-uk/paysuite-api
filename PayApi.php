@@ -519,7 +519,7 @@ $c = [
                ,`OriginalStatus`='{$esc["status"]}'
               ON DUPLICATE KEY UPDATE
                 `Status`='{$esc["status"]}'
-               ,`StatusChanged`=IF(STRCMP('{$esc["status"]}',`OriginalStatus`) != 0 AND `StatusChanged` IS NULL, NOW(), NULL)
+               ,`StatusChanged`=IF(STRCMP('{$esc["status"]}',`OriginalStatus`) != 0 AND `StatusChanged` IS NULL, NOW(), `StatusChanged`)
               ;
             ";
             try {
