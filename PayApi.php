@@ -400,6 +400,7 @@ class PayApi {
                                 // ErrorCode 3 - Account holder name must contain only:
                                 // upper case letters (A-Z), numbers (0-9), full stop (.),
                                 // forward slash (/), dash (-), Ampersand (&) and space
+                                $v = strtr($v, '_', '-'); // temp hack, regexp needs fixing
                                 $v = preg_replace ('<[^A-z0-9\./\-& ]>','',$v);
                                 $m[$k] = $v;
                             }
