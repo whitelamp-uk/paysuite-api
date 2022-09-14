@@ -363,7 +363,11 @@ class PayApi {
 
     public function insert_mandates ($mandates)  {
         if (!count($mandates)) {
-            fwrite (STDERR,"No mandates to insert\n");
+            if (defined('STDERR')) {
+                fwrite (STDERR,"No mandates to insert\n");
+            else {
+                error_log("No mandates to insert\n");
+            }
             return true;
         }
         $good = $bad = 0; // for summary email
@@ -373,7 +377,9 @@ class PayApi {
             if (!array_key_exists($m['Freq'],$this->schedules)) {
                 $msg = "Freq={$m['Freq']} is not currently supported for ClientRef={$m['ClientRef']}";
                 $this->error_log (119,$msg);
-                fwrite (STDERR,"$msg\n");
+                if (defined('STDERR')) {
+                    fwrite (STDERR,"$msg\n");
+                }
             }
             elseif ($m['PayDay']) {
                 $m['StartDate'] = collection_startdate (gmdate('Y-m-d'),$m['PayDay']);
