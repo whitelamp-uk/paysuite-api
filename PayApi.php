@@ -365,6 +365,7 @@ class PayApi {
         if (!count($mandates)) {
             if (defined('STDERR')) {
                 fwrite (STDERR,"No mandates to insert\n");
+            }
             else {
                 error_log("No mandates to insert\n");
             }
