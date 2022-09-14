@@ -572,6 +572,13 @@ $c = [
         }
     }
 
+    public function player_new($mandate, $oldcrf) {
+        // call insert_mandates
+        $mandates = array($mandate);
+        $this->insert_mandates($mandates);
+        // new code in due course to disable previous
+    }
+
     private function put_contract (&$mandate) {
         $mandate['FailReason'] = "";
         print_r ($mandate);
