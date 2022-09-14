@@ -435,7 +435,9 @@ class PayApi {
                         }
                         catch (\mysqli_sql_exception $e) {
                             $this->error_log (117,'SQL insert failed: '.$e->getMessage());
-                            fwrite (STDERR,"SQL insert failed: ".$e->getMessage()."\n");
+                            if (defined('STDERR')) {
+                                fwrite (STDERR,"SQL insert failed: ".$e->getMessage()."\n");
+                            }
                         }
                     }
                     else {
@@ -459,7 +461,11 @@ class PayApi {
             else {
                 $msg = "PayDay={$m['PayDay']} is not valid for ClientRef={$m['ClientRef']}";
                 $this->error_log (115,$msg);
-                fwrite (STDERR,"$msg\n");
+                if (defined('STDERR')) {
+                    fwrite (STDERR,"$msg\n");
+                } else {
+                    error_log($msg);
+                }
             }
             if ($ok) {
                 $good++;
