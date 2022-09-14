@@ -382,8 +382,10 @@ class PayApi {
                     fwrite (STDERR,"$msg\n");
                 }
             }
-            elseif ($m['PayDay']) {
-                $m['StartDate'] = collection_startdate (gmdate('Y-m-d'),$m['PayDay']);
+            elseif ($m['PayDay'] || $m['StartDate']) {
+                if (!$m['StartDate']) {
+                    $m['StartDate'] = collection_startdate (gmdate('Y-m-d'),$m['PayDay']);
+                }
                 $sql = "
                   SELECT
                     *
