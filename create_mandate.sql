@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS `paysuite_mandate` (
   `Freq` varchar(255) DEFAULT NULL,
   `Amount` decimal(10,2) DEFAULT NULL,
   `ChancesCsv` varchar(255) CHARACTER SET ascii NOT NULL,
-  `Status` char(64) CHARACTER SET ascii NOT NULL,
+  `Status` char(64) CHARACTER SET ascii NOT NULL DEFAULT '',
   `FailReason` varchar(255) NOT NULL,
   `Updated` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`MandateId`),
