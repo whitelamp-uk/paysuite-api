@@ -363,7 +363,12 @@ class PayApi {
 
     public function insert_mandates ($mandates)  {
         if (!count($mandates)) {
-            fwrite (STDERR,"No mandates to insert\n");
+            if (defined('STDERR')) {
+                fwrite (STDERR,"No mandates to insert\n");
+            }
+            else {
+                error_log("No mandates to insert\n");
+            }
             return true;
         }
         $good = $bad = 0; // for summary email
@@ -373,10 +378,14 @@ class PayApi {
             if (!array_key_exists($m['Freq'],$this->schedules)) {
                 $msg = "Freq={$m['Freq']} is not currently supported for ClientRef={$m['ClientRef']}";
                 $this->error_log (119,$msg);
-                fwrite (STDERR,"$msg\n");
+                if (defined('STDERR')) {
+                    fwrite (STDERR,"$msg\n");
+                }
             }
-            elseif ($m['PayDay']) {
-                $m['StartDate'] = collection_startdate (gmdate('Y-m-d'),$m['PayDay']);
+            elseif ($m['PayDay'] || $m['StartDate']) {
+                if (!$m['StartDate']) {
+                    $m['StartDate'] = collection_startdate (gmdate('Y-m-d'),$m['PayDay']);
+                }
                 $sql = "
                   SELECT
                     *
@@ -428,7 +437,9 @@ class PayApi {
                         }
                         catch (\mysqli_sql_exception $e) {
                             $this->error_log (117,'SQL insert failed: '.$e->getMessage());
-                            fwrite (STDERR,"SQL insert failed: ".$e->getMessage()."\n");
+                            if (defined('STDERR')) {
+                                fwrite (STDERR,"SQL insert failed: ".$e->getMessage()."\n");
+                            }
                         }
                     }
                     else {
@@ -452,7 +463,11 @@ class PayApi {
             else {
                 $msg = "PayDay={$m['PayDay']} is not valid for ClientRef={$m['ClientRef']}";
                 $this->error_log (115,$msg);
-                fwrite (STDERR,"$msg\n");
+                if (defined('STDERR')) {
+                    fwrite (STDERR,"$msg\n");
+                } else {
+                    error_log($msg);
+                }
             }
             if ($ok) {
                 $good++;
@@ -570,6 +585,13 @@ $c = [
             throw new \Exception ('SQL error '.$e->getMessage());
             return false;
         }
+    }
+
+    public function player_new($mandate, $oldcrf) {
+        // call insert_mandates
+        $mandates = array($mandate);
+        $this->insert_mandates($mandates);
+        // new code in due course to disable previous
     }
 
     private function put_contract (&$mandate) {
