@@ -81,7 +81,8 @@ class PayApi {
             'apiKey: '.PST_API_KEY,
             'Content-Type: application/x-www-form-urlencoded', //application/json',
             //'Content-Type: application/json', 
-
+            "Transfer-Encoding: ",  // fix php 7.4 bug https://bugs.php.net/bug.php?id=79013
+            //"Content-Length: 0", needed? Or does curl work it out for you (likely)
         ];
         $defaults = [
             CURLOPT_HEADER => 0,
@@ -94,6 +95,7 @@ class PayApi {
             //CURLOPT_HEADER => true,
             CURLINFO_HEADER_OUT => true,
         ];
+        error_log(print_r($defaults), true);
         $ch = curl_init ();
         curl_setopt_array ($ch,$options+$defaults);
 
@@ -184,7 +186,7 @@ class PayApi {
     }
 
     private function execute ($sql_file) {
-        echo $sql_file;
+        //echo $sql_file;
         $sql = file_get_contents ($sql_file);
         try {
             $result = $this->connection->query ($sql);
@@ -359,9 +361,11 @@ class PayApi {
                 return false;
             }
         }
+        return true;
     }
 
-    public function insert_mandates ($mandates)  {
+    // todo populate errors array
+    public function insert_mandates ($mandates, &$error=[])  {
         if (!count($mandates)) {
             if (defined('STDERR')) {
                 fwrite (STDERR,"No mandates to insert\n");
@@ -426,6 +430,8 @@ class PayApi {
                            ,`Freq`='{$esc['Freq']}'
                            ,`Amount`='{$esc['Amount']}'
                            ,`ChancesCsv`='{$esc['Chances']}'
+                           ,`Status`=''
+                           ,`FailReason`=''
                           ON DUPLICATE KEY UPDATE
                             `ClientRef`='{$esc['ClientRef']}'
                           ;
@@ -590,11 +596,15 @@ $c = [
     public function player_new($mandate, $oldcrf) {
         // call insert_mandates
         $mandates = array($mandate);
-        $this->insert_mandates($mandates);
-        // new code in due course to disable previous
+        $this->insert_mandates($mandates, $errors); // add return code 
+        // if errors=ok
+        //   insert into livedb.paysuite_mandate select * from makedb.paysuite_mandate where crf = $mandate[crf]
+        //   (in due course disable previous via API; in short term do it manually)
+        // return ok or not
     }
 
     private function put_contract (&$mandate) {
+        echo "put_contract ";
         $mandate['FailReason'] = "";
         print_r ($mandate);
         if (!array_key_exists('CustomerGuid',$mandate) || !$mandate['CustomerGuid']) {
@@ -625,8 +635,10 @@ $c = [
             'atTheEnd' => 'Switch to Further Notice', // required 
             'additionalReference' => $mandate['Chances'], // used for chances
         ];
+        echo "details ";
         print_r ($details);
         $response = $this->curl_post ("customer/{$mandate['CustomerGuid']}/contract",$details);
+        echo "response ";
         print_r ($response); // for now, dump to log file
         // two stages of error handling because Paysuite give us two independent error types
         if (isset( $response->error)) { // e.g.  The requested resource is not found
@@ -655,6 +667,29 @@ $c = [
                 return true;
             }
         }
+
+
+        $address_array = array($mandate['AddressLine1'], $mandate['AddressLine2'], $mandate['AddressLine3'], $mandate['Town'], $mandate['County']);
+        foreach ($address_array as $line) {
+            if (strlen($line)) {
+                $lines[] = $line;
+            }
+        }
+        $numlines = count($lines);
+        if ($numlines == 5) {
+            $addr1 = $lines[0].', '.$lines[1]; // because often housename + street
+            $addr2 = $lines[2];
+            $addr3 = $lines[3];
+            $addr4 = $lines[4];
+        }
+        else {
+            $addr1 = $lines[0];
+            $addr2 = (isset($lines[1])) ? $lines[1] : '';
+            $addr3 = (isset($lines[2])) ? $lines[2] : '';
+            $addr4 = (isset($lines[3])) ? $lines[3] : '';
+        }
+
+
         $sort = preg_replace ('/\D/','',$mandate['SortCode']);
         $details = [
             'Email' => $mandate['Email'],
@@ -663,19 +698,24 @@ $c = [
             'FirstName' => $mandate['NamesGiven'],
             'Surname' => $mandate['NamesFamily'],
 // TODO: confirm these lengths are different
-            'Line1' => substr ($mandate['AddressLine1'],0,50),
-            'Line2' => substr ($mandate['AddressLine2'],0,30),
+            'Line1' => substr ($addr1,0,50),
+            'Line2' => substr ($addr2,0,30),
             'PostCode' => $mandate['Postcode'],
             'AccountNumber' => $mandate['Account'],
             'BankSortCode' => $sort,
             'AccountHolderName' => $mandate['Name']
         ];
         // optional
-        if (strlen($mandate['AddressLine3'])) {
-            $details['Line3'] = substr ($mandate['AddressLine3'],0,30);
+        if (strlen($addr3)) {
+            $details['Line3'] = substr ($addr3,0,30);
         }
+        if (strlen($addr4)) {
+            $details['Line4'] = substr ($addr4,0,30);
+        }
+        echo "put_customer ";
         print_r ($details); // for now, dump to log file
-        $response = $this->curl_post ('customer',$details);
+        $response = $this->curl_post ('customer',$details); 
+        echo "response ";
         print_r ($response); // for now, dump to log file
         // two stages of error handling because Paysuite give us two independent error types
         if (isset( $response->error)) { // e.g.  The requested resource is not found
@@ -888,7 +928,9 @@ $c = [
     }
 
     private function test_schedule() {
+        error_log("test_schedule");
         $r = $this->curl_get('schedules');
+        error_log(print_r($r), true);
         echo "\nget: "; print_r($r);
     }
 
