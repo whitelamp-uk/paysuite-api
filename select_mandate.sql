@@ -23,6 +23,7 @@ SELECT
 FROM `paysuite_mandate`
 WHERE LENGTH(`ContractGuid`)>0
   AND LENGTH(`DDRefOrig`)>0
+{{WHERE}}
 GROUP BY `MandateId`
 ORDER BY `MandateId`
 ;

@@ -364,8 +364,7 @@ class PayApi {
         return true;
     }
 
-    // todo populate errors array
-    public function insert_mandates ($mandates, &$error=[])  {
+    public function insert_mandates ($mandates,&$bad=0,&$good=0)  {
         if (!count($mandates)) {
             if (defined('STDERR')) {
                 fwrite (STDERR,"No mandates to insert\n");
@@ -375,7 +374,6 @@ class PayApi {
             }
             return true;
         }
-        $good = $bad = 0; // for summary email
         $body = '';
         foreach ($mandates as $m) {
             $ok = false;
@@ -424,7 +422,7 @@ class PayApi {
                           SET
                             `ClientRef`='{$esc['ClientRef']}'
                            ,`Name`='{$esc['Name']}'
-                           ,`Sortcode`='{$esc['SortCode']}'
+                           ,`Sortcode`='{$esc['Sortcode']}'
                            ,`Account`='{$esc['Account']}'
                            ,`StartDate`='{$esc['StartDate']}'
                            ,`Freq`='{$esc['Freq']}'
@@ -581,6 +579,7 @@ $c = [
         $sql                = "INSERT INTO `".PST_TABLE_MANDATE."`\n";
         $sql               .= file_get_contents (__DIR__.'/select_mandate.sql');
         $sql                = str_replace ('{{PST_REFNO_OFFSET}}',PST_REFNO_OFFSET,$sql);
+        $sql                = str_replace ('{{WHERE}}','',$sql);
         echo $sql;
         try {
             $this->connection->query ($sql);
@@ -593,14 +592,62 @@ $c = [
         }
     }
 
-    public function player_new($mandate, $oldcrf) {
-        // call insert_mandates
-        $mandates = array($mandate);
-        $this->insert_mandates($mandates, $errors); // add return code 
-        // if errors=ok
-        //   insert into livedb.paysuite_mandate select * from makedb.paysuite_mandate where crf = $mandate[crf]
-        //   (in due course disable previous via API; in short term do it manually)
-        // return ok or not
+    public function player_new_tmp ($mandate,$db_live=null) {
+        // Use API and insert the internal mandate
+        $this->insert_mandates ([$mandate],$bad);
+        if ($bad>0) {
+            return false;
+        }
+        $crf = $this->connection->real_escape_string ($mandate['ClientRef']);
+        if ($db_live) {
+            // Put the internal mandate live
+            $q = "
+              INSERT INTO `$db_live`.`paysuite_mandate`
+              SELECT * FROM `paysuite_mandate`
+              WHERE `ClientRef`='$crf'
+            ";
+            try {
+                $this->connection->query ($sql);
+            }
+            catch (\mysqli_sql_exception $e) {
+                $this->error_log (114,'Copy new mandate live failed: '.$e->getMessage());
+                throw new \Exception ('SQL error '.$e->getMessage());
+                return false;
+            }
+        }
+        // Write out the blotto2 mandate
+        $table  = PST_TABLE_MANDATE;
+        $sql    = "INSERT INTO `$table`\n";
+        $sql   .= file_get_contents (__DIR__.'/select_mandate.sql');
+        $sql    = str_replace ('{{PST_REFNO_OFFSET}}',PST_REFNO_OFFSET,$sql);
+        $sql    = str_replace ('{{WHERE}}',"AND `ClientRef`='$crf'",$sql);
+        echo $sql;
+        try {
+            $this->connection->query ($sql);
+        }
+        catch (\mysqli_sql_exception $e) {
+            $this->error_log (113,'Find new mandate failed: '.$e->getMessage());
+            throw new \Exception ('SQL error '.$e->getMessage());
+            return false;
+        }
+        if ($db_live) {
+            // Put the blotto2 mandate live
+            $q = "
+              INSERT INTO `$db_live`.`$table`
+              SELECT * FROM `$table`
+              WHERE `ClientRef`='$crf'
+            ";
+            try {
+                $this->connection->query ($sql);
+            }
+            catch (\mysqli_sql_exception $e) {
+                $this->error_log (112,'Copy new mandate live failed: '.$e->getMessage());
+                throw new \Exception ('SQL error '.$e->getMessage());
+                return false;
+            }
+        }
+        // TODO: disable previous via API using $mandate[ClientRefPrevious]; in short term do it manually
+        return true;
     }
 
     private function put_contract (&$mandate) {
@@ -690,7 +737,7 @@ $c = [
         }
 
 
-        $sort = preg_replace ('/\D/','',$mandate['SortCode']);
+        $sort = preg_replace ('/\D/','',$mandate['Sortcode']);
         $details = [
             'Email' => $mandate['Email'],
             'Title' => $mandate['Title'],
