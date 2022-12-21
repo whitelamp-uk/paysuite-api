@@ -377,6 +377,9 @@ class PayApi {
         $body = '';
         foreach ($mandates as $m) {
             $ok = false;
+            if (!array_key_exists('StartDate',$m)) {
+                $m['StartDate'] = null;
+            }
             if (!array_key_exists($m['Freq'],$this->schedules)) {
                 $msg = "Freq={$m['Freq']} is not currently supported for ClientRef={$m['ClientRef']}";
                 $this->error_log (119,$msg);
