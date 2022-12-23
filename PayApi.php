@@ -483,6 +483,8 @@ class PayApi {
             else {
                 $bad++;
                 $body .= $m['ClientRef']." FAIL\n";
+                $ocr = explode (BLOTTO_CREF_SPLITTER,$m['ClientRef']) [0];
+                $body .= adminer('Supporters','original_client_ref','=',$ocr)."\n";
                 if (!array_key_exists('CustomerGuid',$m) || !$m['CustomerGuid']) {
                     $body .= "No customer entity created.\n";
                 }
