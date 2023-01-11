@@ -603,23 +603,8 @@ $c = [
         if ($bad>0) {
             return false;
         }
+        // The internal mandate has now been inserted
         $crf = $this->connection->real_escape_string ($mandate['ClientRef']);
-        if ($db_live) {
-            // Put the internal mandate live
-            $q = "
-              INSERT INTO `$db_live`.`paysuite_mandate`
-              SELECT * FROM `paysuite_mandate`
-              WHERE `ClientRef`='$crf'
-            ";
-            try {
-                $this->connection->query ($sql);
-            }
-            catch (\mysqli_sql_exception $e) {
-                $this->error_log (114,'Copy new mandate live failed: '.$e->getMessage());
-                throw new \Exception ('SQL error '.$e->getMessage());
-                return false;
-            }
-        }
         // Write out the blotto2 mandate
         $table  = PST_TABLE_MANDATE;
         $sql    = "INSERT INTO `$table`\n";
@@ -636,7 +621,21 @@ $c = [
             return false;
         }
         if ($db_live) {
-            // Put the blotto2 mandate live
+            // Insert the live internal mandate
+            $q = "
+              INSERT INTO `$db_live`.`paysuite_mandate`
+              SELECT * FROM `paysuite_mandate`
+              WHERE `ClientRef`='$crf'
+            ";
+            try {
+                $this->connection->query ($sql);
+            }
+            catch (\mysqli_sql_exception $e) {
+                $this->error_log (114,'Copy new mandate live failed: '.$e->getMessage());
+                throw new \Exception ('SQL error '.$e->getMessage());
+                return false;
+            }
+            // Insert the live blotto2 mandate
             $q = "
               INSERT INTO `$db_live`.`$table`
               SELECT * FROM `$table`
@@ -646,7 +645,7 @@ $c = [
                 $this->connection->query ($sql);
             }
             catch (\mysqli_sql_exception $e) {
-                $this->error_log (112,'Copy new mandate live failed: '.$e->getMessage());
+                $this->error_log (115,'Copy new mandate live failed: '.$e->getMessage());
                 throw new \Exception ('SQL error '.$e->getMessage());
                 return false;
             }
