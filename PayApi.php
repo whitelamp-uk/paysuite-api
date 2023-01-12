@@ -673,8 +673,8 @@ $c = [
                 return true;
             }
         }
-        $paymentMonthInYear = intval (substr($mandate['StartDate'], 5, 2));
-        $paymentDayInMonth = intval (substr($mandate['StartDate'], 8, 2));
+        $paymentMonthInYear = intval (substr($mandate['StartDate'],5,2));
+        $paymentDayInMonth = intval (substr($mandate['StartDate'],8,2));
         $details = [
             'scheduleName' => $this->schedules[$mandate['Freq']], // required (Either Name or ID)
             'start' => $mandate['StartDate'].'T00:00:00.000', // docs say to pass a microsecond value!
@@ -690,7 +690,7 @@ $c = [
         print_r ($details);
         $response = $this->curl_post ("customer/{$mandate['CustomerGuid']}/contract",$details);
         echo "response ";
-        print_r ($response); // for now, dump to log file
+        print_r ($response); // dump to log file
         // two stages of error handling because Paysuite give us two independent error types
         if (isset( $response->error)) { // e.g.  The requested resource is not found
             $mandate['FailReason'] = $response->error;
@@ -718,17 +718,22 @@ $c = [
                 return true;
             }
         }
-
-
-        $address_array = array($mandate['AddressLine1'], $mandate['AddressLine2'], $mandate['AddressLine3'], $mandate['Town'], $mandate['County']);
+        // Address
+        $address_array = [
+            $mandate['AddressLine1'],
+            $mandate['AddressLine2'],
+            $mandate['AddressLine3'],
+            $mandate['Town'],
+            $mandate['County']
+        ];
         foreach ($address_array as $line) {
             if (strlen($line)) {
                 $lines[] = $line;
             }
         }
-        $numlines = count($lines);
-        if ($numlines == 5) {
-            $addr1 = $lines[0].', '.$lines[1]; // because often housename + street
+        $numlines = count ($lines);
+        if ($numlines==5) {
+            $addr1 = $lines[0].', '.$lines[1]; // because often house name + street
             $addr2 = $lines[2];
             $addr3 = $lines[3];
             $addr4 = $lines[4];
@@ -739,8 +744,7 @@ $c = [
             $addr3 = (isset($lines[2])) ? $lines[2] : '';
             $addr4 = (isset($lines[3])) ? $lines[3] : '';
         }
-
-
+        // Build customer details
         $sort = preg_replace ('/\D/','',$mandate['Sortcode']);
         $details = [
             'Email' => $mandate['Email'],
@@ -764,10 +768,10 @@ $c = [
             $details['Line4'] = substr ($addr4,0,30);
         }
         echo "put_customer ";
-        print_r ($details); // for now, dump to log file
+        print_r ($details); // dump to log file
         $response = $this->curl_post ('customer',$details); 
         echo "response ";
-        print_r ($response); // for now, dump to log file
+        print_r ($response); // dump to log file
         // two stages of error handling because Paysuite give us two independent error types
         if (isset( $response->error)) { // e.g.  The requested resource is not found
             $mandate['FailReason'] = $response->error;
