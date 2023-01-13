@@ -597,7 +597,7 @@ $c = [
         }
     }
 
-    public function player_new_tmp ($mandate,$db_live=null) {
+    public function player_new ($mandate,$db_live=null) {
         // Use API and insert the internal mandate
         $this->insert_mandates ([$mandate],$bad);
         if ($bad>0) {
