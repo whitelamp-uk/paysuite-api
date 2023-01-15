@@ -4,41 +4,42 @@ namespace Blotto\Paysuite;
 
 class PayApi {
 
-    private  $bogon_file;
-    private  $connection;
-    public   $constants = [
-                'PST_URL',
-                'PST_API_KEY',
-                'PST_ERROR_LOG',
-                'PST_FILE_DEBOGON',
-                'PST_PAY_INTERVAL',
-                'PST_REFNO_OFFSET',
-                'PST_TABLE_MANDATE',
-                'PST_TABLE_COLLECTION',
-             ];
-    public   $schedules = [
-                 '1' => PST_SCHEDULE_1,
-                 '3' => PST_SCHEDULE_3,
-                 '6' => PST_SCHEDULE_6,
-                 '12' => PST_SCHEDULE_12,
-                 'M' => PST_SCHEDULE_1,
-                 'Q' => PST_SCHEDULE_3,
-                 'S' => PST_SCHEDULE_6,
-                 'Y' => PST_SCHEDULE_12,
-                 'Monthly' => PST_SCHEDULE_1,
-                 'Quarterly' => PST_SCHEDULE_3,
-                 '6 Monthly' => PST_SCHEDULE_6,
-                 'Annually' => PST_SCHEDULE_12,
-                 'OneMonthly' => PST_SCHEDULE_1,
-                 'ThreeMonthly' => PST_SCHEDULE_3,
-                 'SixMonthly' => PST_SCHEDULE_6,
-                 'TwelveMonthly' => PST_SCHEDULE_12,
-             ];
-    public   $database;
-    public   $dd_before;
-    public   $diagnostic;
-    public   $error;
-    public   $errorCode = 0;
+    private     $bogon_file;
+    private     $connection;
+    public      $constants = [
+                    'PST_URL',
+                    'PST_API_KEY',
+                    'PST_ERROR_LOG',
+                    'PST_FILE_DEBOGON',
+                    'PST_PAY_INTERVAL',
+                    'PST_REFNO_OFFSET',
+                    'PST_TABLE_MANDATE',
+                    'PST_TABLE_COLLECTION',
+                ];
+    public      $schedules = [
+                    '1' => PST_SCHEDULE_1,
+                    '3' => PST_SCHEDULE_3,
+                    '6' => PST_SCHEDULE_6,
+                    '12' => PST_SCHEDULE_12,
+                    'M' => PST_SCHEDULE_1,
+                    'Q' => PST_SCHEDULE_3,
+                    'S' => PST_SCHEDULE_6,
+                    'Y' => PST_SCHEDULE_12,
+                    'Monthly' => PST_SCHEDULE_1,
+                    'Quarterly' => PST_SCHEDULE_3,
+                    '6 Monthly' => PST_SCHEDULE_6,
+                    'Annually' => PST_SCHEDULE_12,
+                    'OneMonthly' => PST_SCHEDULE_1,
+                    'ThreeMonthly' => PST_SCHEDULE_3,
+                    'SixMonthly' => PST_SCHEDULE_6,
+                    'TwelveMonthly' => PST_SCHEDULE_12,
+                ];
+    public      $database;
+    public      $dd_before;
+    public      $diagnostic;
+    public      $error;
+    public      $errorCode = 0;
+    protected   $simulateMode;
 
 
     public function __construct ($connection,$org=null) {
@@ -63,12 +64,22 @@ class PayApi {
         $options += [
             CURLOPT_CUSTOMREQUEST => 'DELETE'
         ];
-        $result = $this->curl_function($path, $options);
+        $result = $this->curl_function ($path,$options);
         return $result;
     }
 
-    // errors look like {"ErrorCode":7,"Detail":null,"Message":"API not enabled"}
     private function curl_function ($path,$options=[]) {
+        try {
+            if ($result=$this->simulate()) {
+                return $result;
+            }
+        }
+        catch (\Exception $e) {
+            // $this->simulate() honours PST_SIMULATE and $this->simulateMode
+            // However if it throws an exception, bail out
+            return false;
+        }
+    // errors look like {"ErrorCode":7,"Detail":null,"Message":"API not enabled"}
     /*
         * Send a generic request using cURL
         * @param string $path to request
@@ -95,20 +106,25 @@ class PayApi {
             //CURLOPT_HEADER => true,
             CURLINFO_HEADER_OUT => true,
         ];
-        error_log(print_r($defaults), true);
+        error_log (print_r($defaults,true));
         $ch = curl_init ();
         curl_setopt_array ($ch,$options+$defaults);
-
         if (!$result=curl_exec($ch)) {
             $this->error_log (127,curl_error($ch));
             throw new \Exception ("cURL error ".print_r(curl_error($ch), true));
             return false;
         }
-        $outHeaders = explode("\n", curl_getinfo($ch, CURLINFO_HEADER_OUT));
-        $outHeaders = array_filter($outHeaders, function($value) { return $value !== '' && $value !== ' ' && strlen($value) != 1; });
-        //print_r($outHeaders);
+        $outHeaders = explode ("\n", curl_getinfo($ch,CURLINFO_HEADER_OUT));
+        $outHeaders = array_filter (
+            $outHeaders,
+            function ($value) {
+                return $value!=='' && $value!==' ' && strlen($value)!=1;
+            }
+        );
+        //print_r ($outHeaders);
         curl_close ($ch);
-        return json_decode($result);
+        $result = json_decode ($result);
+        return $result;
     }
 
     private function curl_get ($path,$params=[],$options=[]) {
@@ -126,7 +142,7 @@ class PayApi {
         if (count($params)) {
             $path .= '?'.http_build_query($params);
         }
-        $result = $this->curl_function($path, $options);
+        $result = $this->curl_function ($path,$options);
         return $result;
     }
 
@@ -143,13 +159,13 @@ class PayApi {
             throw new \Exception ('Post and option arguments must be arrays');
             return false;
         }
-        $post_options = array (
+        $post_options = [
             CURLOPT_CUSTOMREQUEST => 'PATCH',
             //CURLOPT_POSTFIELDS => json_encode ($post)
-        );
+        ];
         $options += $post_options;
         $path .= '?'.http_build_query($post);
-        $result = $this->curl_function($path, $options);
+        $result = $this->curl_function ($path,$options);
         return $result;
     }
 
@@ -165,14 +181,14 @@ class PayApi {
             throw new \Exception ('Post and option arguments must be arrays');
             return false;
         }
-        $post_options = array (
+        $post_options = [
             CURLOPT_POST => true,
             //CURLOPT_POSTFIELDS => http_build_query ($post, null, '&', PHP_QUERY_RFC3986) // this was no good
             //CURLOPT_POSTFIELDS => json_encode ($post) // this was better until I tried to set the callback URL
-        );
+        ];
         $options += $post_options;
-        $path .= '?'.http_build_query($post); // so sheesh, even POST needs to be a query string...
-        $result = $this->curl_function($path, $options);
+        $path .= '?'.http_build_query ($post); // so sheesh, even POST needs to be a query string...
+        $result = $this->curl_function ($path,$options,);
         return $result;
     }
 
@@ -201,6 +217,7 @@ class PayApi {
     }
 
     private function fetch_collections ($m) {
+        $this->simulateMode = 'payment';
         $response = $this->curl_get ('contract/'.$m['ContractGuid'].'/payment');
         $collections = [];
         if (isset($response->Payments)) {
@@ -216,16 +233,18 @@ class PayApi {
                 }
             }
         }
+/*
         // TODO: or maybe this needs to work by getting all contracts for the customer
         // In the case of BWH supporter Ivor Bennett, two contracts have been created for one customer
         // At the time of writing nobody (including me) is admitting responsibility for that happening
         // So perhaps being tolerant of it is the best way...
-/*
         // This is just pseudo-code to make the point
+        $this->simulateMode = 'contract';
         $response = $this->curl_get ('customer/'.$m['CustomerGuid'].'/contract');
         $collections = [];
         if (isset($response->Contracts)) {
             foreach ($response->Contracts as $c) {
+                $this->simulateMode = 'payment';
                 $response2 = $this->curl_get ('contract/'.$c['guid'].'/payment');
                 if (isset($response2->Payments)) {
                     foreach ($response2->Payments as $p) {
@@ -244,22 +263,23 @@ class PayApi {
             }
         }
 */
-        return $collections;
-
-        /*$collections = [
+/*
+        $collections = [
             [
                 'payment_guid' => 'abc-xyz',
                 'date_collected' => '2022-02-01',
                 'amount' => 4.34
             ]
         ];
-        return $collections;*/
+        return $collections;
+*/
+        return $collections;
     }
 
-    // Q: an old development test or needed?
-    // A: might yet prove useful...
     private function get_bacs_endpoints ( ) {
+        // might yet prove useful...
         foreach (['customer', 'contract', 'payment', 'schedule'] as $entity) {
+            $this->simulateMode = $entity.'/callback';
             $endpoints[$entity] = $this->curl_get ('BACS/'.$entity.'/callback');
         }
         print_r ($endpoints);
@@ -267,11 +287,11 @@ class PayApi {
     }
 
     public function import ( ) {
-//$this->test_customer();
-//$this->test_callback();
-//$this->test_schedule ();
-//$this->test_contract ();
-//return;
+    //$this->test_customer ();
+    //$this->test_callback ();
+    //$this->test_schedule ();
+    //$this->test_contract ();
+    //return;
         // Get all the mandates
         $sql = "
           SELECT
@@ -391,7 +411,7 @@ class PayApi {
                 if (!$m['StartDate']) {
                     $m['StartDate'] = collection_startdate (gmdate('Y-m-d'),$m['PayDay']);
                 }
-                $sql = "
+                $qs = "
                   SELECT
                     *
                   FROM `paysuite_mandate`
@@ -400,7 +420,7 @@ class PayApi {
                   ;
                 ";
                 try {
-                    $result = $this->connection->query ($sql);
+                    $result = $this->connection->query ($qs);
                 }
                 catch (\mysqli_sql_exception $e) {
                     $this->error_log (118,'SQL select failed: '.$e->getMessage());
@@ -600,8 +620,10 @@ $c = [
     public function player_new ($mandate,$db_live=null) {
         // Use API and insert the internal mandate
         $this->insert_mandates ([$mandate],$bad);
+return false;
         if ($bad>0) {
-            return false;
+            // The API did not create the mandate
+            return null;
         }
         // The internal mandate has now been inserted
         $crf = $this->connection->real_escape_string ($mandate['ClientRef']);
@@ -618,6 +640,7 @@ $c = [
         catch (\mysqli_sql_exception $e) {
             $this->error_log (113,'Find new mandate failed: '.$e->getMessage());
             throw new \Exception ('SQL error '.$e->getMessage());
+            // The API created the mandate but other processes did not complete
             return false;
         }
         if ($db_live) {
@@ -633,6 +656,7 @@ $c = [
             catch (\mysqli_sql_exception $e) {
                 $this->error_log (114,'Copy new mandate live failed: '.$e->getMessage());
                 throw new \Exception ('SQL error '.$e->getMessage());
+                // The API created the mandate but other processes did not complete
                 return false;
             }
             // Insert the live blotto2 mandate
@@ -647,10 +671,12 @@ $c = [
             catch (\mysqli_sql_exception $e) {
                 $this->error_log (115,'Copy new mandate live failed: '.$e->getMessage());
                 throw new \Exception ('SQL error '.$e->getMessage());
+                // The API created the mandate but other processes did not complete
                 return false;
             }
         }
-        // TODO: disable previous via API using $mandate[ClientRefPrevious]; in short term do it manually
+        // TODO: cancel previous via API using $mandate[ClientRefPrevious]; in short term admin does it via provider dashboard
+        // The API created the mandate and all other processes completed
         return true;
     }
 
@@ -688,6 +714,7 @@ $c = [
         ];
         echo "details ";
         print_r ($details);
+        $this->simulateMode = 'contract';
         $response = $this->curl_post ("customer/{$mandate['CustomerGuid']}/contract",$details);
         echo "response ";
         print_r ($response); // dump to log file
@@ -752,7 +779,7 @@ $c = [
             'CustomerRef' => $mandate['ClientRef'],
             'FirstName' => $mandate['NamesGiven'],
             'Surname' => $mandate['NamesFamily'],
-// TODO: confirm these lengths are different
+            // TODO: confirm these lengths are different
             'Line1' => substr ($addr1,0,50),
             'Line2' => substr ($addr2,0,30),
             'PostCode' => $mandate['Postcode'],
@@ -769,6 +796,7 @@ $c = [
         }
         echo "put_customer ";
         print_r ($details); // dump to log file
+        $this->simulateMode = 'customer';
         $response = $this->curl_post ('customer',$details); 
         echo "response ";
         print_r ($response); // dump to log file
@@ -778,7 +806,7 @@ $c = [
             throw new \Exception ($mandate['FailReason']);
             return false;
         }
-        if (isset( $response->ErrorCode)) { // e.g. badly formatted date
+        if (isset($response->ErrorCode)) { // e.g. badly formatted date
             $mandate['FailReason'] = $response->ErrorCode.'. '.$response->Message.': '.$response->Detail;
             throw new \Exception ($mandate['FailReason']);
             return false;
@@ -861,6 +889,38 @@ $c = [
         $this->execute (__DIR__.'/create_collection.sql');
     }
 
+    private function simulate ( ) {
+        if (!defined('PST_SIMULATE') || !PST_SIMULATE || !$this->simulateMode) {
+            return false;
+        }
+        $rtn                        = new \stdClass ();
+        $rtn->error                 = null;
+        $rtn->ErrorCode             = 0;
+        if ($this->simulateMode=='contract') {
+            $rtn->Id                = 123;
+            $rtn->DirectDebitRef    = 'abc123';
+        }
+        elseif ($this->simulateMode=='customer') {
+            $rtn->ErrorCode         = 0;
+            $rtn->Message           = '';
+            $rtn->Detail            = '';
+            $rtn->Id                = '123abc';
+        }
+        elseif ($this->simulateMode=='payment') {
+            $rtn->Payments          = [];
+        }
+        elseif (preg_match('<^(.+)/callback$>',$this->simulateMode,$matches)) {
+            $entity                 = $matches[1];
+            if ($entity=='contract') {
+            }
+            elseif ($entity=='customer') {
+            }
+            elseif ($entity=='payment') {
+            }
+        }
+        return $rtn;
+    }
+
     private function table_load ($data,$tablename,$fields) {
         $sql                = "INSERT INTO ".$tablename." (`".implode('`, `', $fields)."`) VALUES\n";
         foreach ($data as $record) {
@@ -886,8 +946,10 @@ $c = [
     }
 
     private function test_callback() {
-        $r = $this->curl_get('BACS/contract/callback');
-        echo "\nget: ";print_r($r);
+        $this->simulateMode = null;
+        $r = $this->curl_get ('BACS/contract/callback');
+        echo "\nget: ";
+        print_r ($r);
         /*$r = $this->curl_post('BACS/contract/callback', ['url' => '']);
         echo "\npost: ";print_r($r);
         $r = $this->curl_get('BACS/contract/callback');
@@ -901,7 +963,6 @@ $c = [
     private function test_contract() {
         $customer_guid = '3a02c36f-65dd-4569-ad7f-f7d420d56cdd';
         $details = [
-
             "scheduleName" => "Default Schedule", // required (Either Name or ID)
             //"scheduleId" => "", // required 
             "start" => "2022-04-01T00:00:00.000", // required, yes the docs say to pass a microsecond value!
@@ -920,16 +981,14 @@ $c = [
             //"terminationDate" => "",
             "additionalReference" => "1", // used for chances
             //"customDirectDebitRef" => "", only to be used if instructed to do so!
-
         ];
-
         //$r = $this->curl_post('customer/'.$customer_guid.'/contract', $details);
-        //echo "\npost: ";print_r($r);
-
-        $r = $this->curl_get('customer/'.$customer_guid.'/contract');
-        echo "\nget: ";print_r($r);
-
-
+        //echo "\npost: ";
+        //print_r ($r);
+        $this->simulateMode = null;
+        $r = $this->curl_get ('customer/'.$customer_guid.'/contract');
+        echo "\nget: ";
+        print_r ($r);
     }
 
 /*
@@ -944,7 +1003,7 @@ $c = [
     [Message] => 
 */
 
-    private function test_customer() {
+    private function test_customer ( ) {
         $details = [
             "Email" => "", //john.doe@test.com
             "Title" => "Mr",
@@ -974,7 +1033,8 @@ $c = [
         //$r = $this->curl_patch('customer/3a02c36f-65dd-4569-ad7f-f7d420d56cdd', $patchdetails);
         //echo "\npatch: ";print_r($r);
 
-        $r = $this->curl_get('customer');
+        $this->simulateMode = null;
+        $r = $this->curl_get ('customer');
         echo "\nget: "; // ->Customers[2]
         foreach ($r->Customers as $c) {
             echo $c->CustomerRef.' '.$c->Id."\n";
@@ -982,11 +1042,13 @@ $c = [
 
     }
 
-    private function test_schedule() {
+    private function test_schedule ( ) {
         error_log("test_schedule");
-        $r = $this->curl_get('schedules');
+        $this->simulateMode = null;
+        $r = $this->curl_get ('schedules');
         error_log(print_r($r), true);
         echo "\nget: "; print_r($r);
     }
 
 }
+
