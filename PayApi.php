@@ -188,7 +188,7 @@ class PayApi {
         ];
         $options += $post_options;
         $path .= '?'.http_build_query ($post); // so sheesh, even POST needs to be a query string...
-        $result = $this->curl_function ($path,$options,);
+        $result = $this->curl_function ($path,$options);
         return $result;
     }
 
