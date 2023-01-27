@@ -223,7 +223,7 @@ class PayApi {
             foreach ($response->Payments as $p) {
                 $status_type = $p->Status.':'.$p->Type;
                 if (!in_array($status_type, $this->status_types)) {
-                    $status_types[] = $status_type;
+                    $this->status_types[] = $status_type;
                 }
                 if ($p->Type == 'BACS') {
                     $date = substr ($p->Date,0,10);
