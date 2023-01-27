@@ -235,6 +235,8 @@ class PayApi {
                             'status' => $p->Status,
                         ];
                     }
+                } else {
+                    error_log(print_r($p, true));
                 }
             }
         }
