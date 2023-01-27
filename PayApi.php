@@ -223,7 +223,7 @@ class PayApi {
         if (isset($response->Payments)) {
             foreach ($response->Payments as $p) {
                 $status_type = $p->Status.':'.$p->Type;
-                if (!in_array($status_type, $status_types)) {
+                if (!in_array($status_type, $this->status_types)) {
                     $status_types[] = $status_type;
                 }
                 if ($p->Type == 'BACS') {
@@ -322,7 +322,7 @@ class PayApi {
         }
         $this->output_mandates ();
         $this->output_collections ();
-        error_log('Paysuite status and type combos: '.print_r($status_types, true));
+        error_log('Paysuite status and type combos: '.print_r($this->status_types, true));
     }
 
     private function insert_mandate (&$m)  {
