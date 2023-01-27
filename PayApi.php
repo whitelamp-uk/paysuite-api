@@ -3,7 +3,7 @@
 namespace Blotto\Paysuite;
 
 class PayApi {
-
+    private     $status_types = []; // collect all combinations of statuses and types.
     private     $bogon_file;
     private     $connection;
     public      $constants = [
@@ -106,7 +106,6 @@ class PayApi {
             //CURLOPT_HEADER => true,
             CURLINFO_HEADER_OUT => true,
         ];
-        error_log (print_r($defaults,true));
         $ch = curl_init ();
         curl_setopt_array ($ch,$options+$defaults);
         if (!$result=curl_exec($ch)) {
@@ -217,19 +216,26 @@ class PayApi {
     }
 
     private function fetch_collections ($m) {
+        global $status_types;
         $this->simulateMode = 'payment';
         $response = $this->curl_get ('contract/'.$m['ContractGuid'].'/payment');
         $collections = [];
         if (isset($response->Payments)) {
             foreach ($response->Payments as $p) {
-                $date = substr ($p->Date,0,10);
-                if ($date<$this->dd_before) { // TODO: made conditional after seeing collections for 2022-06-01 in paysuite_collection when inspecting the data on 2022-05-30
-                    $collections[] = [
-                        'payment_guid' => $p->Id,
-                        'date_collected' => $date,
-                        'amount' => $p->Amount,
-                        'status' => $p->Status,
-                    ];
+                $status_type = $p->Status.':'.$p->Type;
+                if (!in_array($status_type, $status_types)) {
+                    $status_types[] = $status_type;
+                }
+                if ($p->Type == 'BACS') {
+                    $date = substr ($p->Date,0,10);
+                    if ($date<$this->dd_before) { // TODO: made conditional after seeing collections for 2022-06-01 in paysuite_collection when inspecting the data on 2022-05-30
+                        $collections[] = [
+                            'payment_guid' => $p->Id,
+                            'date_collected' => $date,
+                            'amount' => $p->Amount,
+                            'status' => $p->Status,
+                        ];
+                    }
                 }
             }
         }
@@ -287,11 +293,12 @@ class PayApi {
     }
 
     public function import ( ) {
-    //$this->test_customer ();
-    //$this->test_callback ();
-    //$this->test_schedule ();
-    //$this->test_contract ();
-    //return;
+        global $status_types;
+        //$this->test_customer ();
+        //$this->test_callback ();
+        //$this->test_schedule ();
+        //$this->test_contract ();
+        //return;
         // Get all the mandates
         $sql = "
           SELECT
@@ -315,6 +322,7 @@ class PayApi {
         }
         $this->output_mandates ();
         $this->output_collections ();
+        error_log('Paysuite status and type combos: '.print_r($status_types, true));
     }
 
     private function insert_mandate (&$m)  {
