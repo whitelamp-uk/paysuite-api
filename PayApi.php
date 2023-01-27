@@ -216,7 +216,6 @@ class PayApi {
     }
 
     private function fetch_collections ($m) {
-        global $status_types;
         $this->simulateMode = 'payment';
         $response = $this->curl_get ('contract/'.$m['ContractGuid'].'/payment');
         $collections = [];
@@ -293,7 +292,6 @@ class PayApi {
     }
 
     public function import ( ) {
-        global $status_types;
         //$this->test_customer ();
         //$this->test_callback ();
         //$this->test_schedule ();
