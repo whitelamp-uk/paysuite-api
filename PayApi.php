@@ -236,7 +236,8 @@ class PayApi {
                         ];
                     }
                 } else {
-                    error_log(print_r($p, true));
+                    error_log("Mandate:\n".print_r($m, true));
+                    error_log("Collection:\n".print_r($p, true));
                 }
             }
         }
