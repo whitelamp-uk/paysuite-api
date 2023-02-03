@@ -628,8 +628,8 @@ $c = [
 
     public function player_new ($mandate,$db_live=null) {
         // Use API and insert the internal mandate
-        $this->insert_mandates ([$mandate],$bad);
-return false;
+        $bad = 0;
+        $this->insert_mandates ([$mandate],$bad); // convert mandate to array
         if ($bad>0) {
             // The API did not create the mandate
             return null;
