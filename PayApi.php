@@ -294,12 +294,14 @@ class PayApi {
         return $endpoints;
     }
 
-    public function import ( ) {
+    public function import ($from='2001-01-01') {
         //$this->test_customer ();
         //$this->test_callback ();
         //$this->test_schedule ();
         //$this->test_contract ();
         //return;
+        $from               = new \DateTime ($from);
+        $this->from         = $from->format ('Y-m-d');
         // Get all the mandates
         $sql = "
           SELECT
@@ -307,6 +309,7 @@ class PayApi {
            ,`ContractGuid`
            ,`ClientRef`
           FROM `paysuite_mandate`
+          WHERE DATE(`MandateCreated`)>='{$this->from}'
           ORDER BY `MandateId`
         ";
         try {
