@@ -442,11 +442,11 @@ class PayApi {
                         // This is a new row for paysuite_mandate
                         $esc = [];
                         foreach ($m as $k=>$v) {
-                            if ($k=='Name') {
+                            if ($k=='Name' || $k=='NamesFamily') {
                                 // ErrorCode 3 - Account holder name must contain only:
                                 // upper case letters (A-Z), numbers (0-9), full stop (.),
                                 // forward slash (/), dash (-), Ampersand (&) and space
-                                $v = strtr($v, '_', '-'); // temp hack, regexp needs fixing
+                                $v = strtr($v, '_~', '--'); // convert 'alternative' dashes
                                 $v = preg_replace ('<[^A-z0-9\./\-& ]>','',$v);
                                 $m[$k] = $v;
                             }
@@ -631,8 +631,8 @@ $c = [
 
     public function player_new ($mandate,$db_live=null) {
         // Use API and insert the internal mandate
-        $this->insert_mandates ([$mandate],$bad);
-return false;
+        $bad = 0;
+        $this->insert_mandates ([$mandate],$bad); // convert mandate to array
         if ($bad>0) {
             // The API did not create the mandate
             return null;
