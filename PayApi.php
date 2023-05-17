@@ -700,7 +700,7 @@ $c = [
             throw new \Exception ("Cannot put contract for {$mandate['ClientRef']} without a customer GUID");
             return false;
         }
-        if (PST_MIGRATE_PREG && preg_match('<'.PST_MIGRATE_PREG.'>',$mandate['ClientRef'])) {
+        if (defined ('PST_MIGRATE_PREG') && PST_MIGRATE_PREG && preg_match('<'.PST_MIGRATE_PREG.'>',$mandate['ClientRef'])) {
             // This is only required if balances are needed for draws before the migration can be completed
             if (gmdate('Y-m-d')<PST_MIGRATE_DATE) {
                 // Only pretend to put the mandate until migration day
@@ -748,7 +748,7 @@ $c = [
 
     private function put_customer (&$mandate) {
         $mandate['FailReason'] = '';
-        if (PST_MIGRATE_PREG && preg_match('<'.PST_MIGRATE_PREG.'>',$mandate['ClientRef'])) {
+        if (defined ('PST_MIGRATE_PREG') && PST_MIGRATE_PREG && preg_match('<'.PST_MIGRATE_PREG.'>',$mandate['ClientRef'])) {
             // This is only required if balances are needed for draws before the migration can be completed
             if (gmdate('Y-m-d')<PST_MIGRATE_DATE) {
                 // Only pretend to put the mandate until migration day
@@ -829,7 +829,7 @@ $c = [
 
     public function reset_fakes ( ) {
         // A migration method
-        if (defined(PST_MIGRATE_PREG) && PST_MIGRATE_PREG) {
+        if (defined('PST_MIGRATE_PREG') && PST_MIGRATE_PREG) {
             if (!defined(PST_MIGRATE_DATE) || !PST_MIGRATE_DATE) {
                 $this->error_log (111,'Migration has no PST_MIGRATE_DATE');
                 throw new \Exception ('Migration has no PST_MIGRATE_DATE');
