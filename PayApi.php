@@ -324,6 +324,11 @@ class PayApi {
             throw new \Exception ('SQL execution error');
             return false;
         }
+        catch (\Exception $e) {
+            $this->error_log (125,'Load collections failed: '.$e->getMessage());
+            throw new \Exception ('Load collections error');
+            return false;
+        }
         $this->output_mandates ();
         $this->output_collections ();
         error_log('Paysuite status and type combos: '.print_r($this->status_types, true));
