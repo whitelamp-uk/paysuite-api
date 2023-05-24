@@ -109,7 +109,7 @@ class PayApi {
         $ch = curl_init ();
         curl_setopt_array ($ch,$options+$defaults);
         if (!($result=curl_exec($ch))) {
-            if (curl_errno()==CURLE_OPERATION_TIMEDOUT) {
+            if (curl_errno($ch)==CURLE_OPERATION_TIMEDOUT) {
                 $this->error_log (127,curl_error($ch));
             }
             else {
