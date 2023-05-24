@@ -108,7 +108,7 @@ class PayApi {
         ];
         $ch = curl_init ();
         curl_setopt_array ($ch,$options+$defaults);
-        if (!$result=curl_exec($ch)) {
+        if (!($result=curl_exec($ch))) {
             $this->error_log (127,curl_error($ch));
             throw new \Exception ("cURL error ".print_r(curl_error($ch), true));
             return false;
