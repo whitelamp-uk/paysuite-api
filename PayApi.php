@@ -105,6 +105,7 @@ class PayApi {
             CURLOPT_HTTPHEADER => $headers,
             //CURLOPT_HEADER => true,
             CURLINFO_HEADER_OUT => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1, // seems to be another php 7.4 bug
         ];
         $ch = curl_init ();
         curl_setopt_array ($ch,$options+$defaults);
