@@ -2,7 +2,7 @@
 -- Must be a single select query
 SELECT
   'PST'
- ,null
+ ,CONCAT({{BLOTTO_ORG_ID}},digitsOnly(`MandateId`+{{PST_REFNO_OFFSET}}))
  ,`MandateId`+{{PST_REFNO_OFFSET}}
  ,`ClientRef`
  ,`MandateCreated`

@@ -357,7 +357,7 @@ class PayApi {
               ;
             ";
             try {
-                echo $sql."\n";
+                //echo $sql."\n";
                 $result = $this->connection->query ($sql);
                 if ($this->connection->affected_rows!=1) {
                     $this->error_log (122,"API update mandate [1] '{$m['ClientRef']}' - no affected rows");
@@ -619,7 +619,7 @@ $c = [
         $sql               .= file_get_contents (__DIR__.'/select_collection.sql');
         $sql                = str_replace ('{{PST_PAY_INTERVAL}}',PST_PAY_INTERVAL,$sql);
         $sql                = str_replace ('{{PST_REFNO_OFFSET}}',PST_REFNO_OFFSET,$sql);
-        echo $sql;
+        //echo $sql;
         try {
             $this->connection->query ($sql);
             tee ("Output {$this->connection->affected_rows} collections\n");
@@ -640,7 +640,8 @@ $c = [
         $sql               .= file_get_contents (__DIR__.'/select_mandate.sql');
         $sql                = str_replace ('{{PST_REFNO_OFFSET}}',PST_REFNO_OFFSET,$sql);
         $sql                = str_replace ('{{WHERE}}','',$sql);
-        echo $sql;
+        $sql                = str_replace ('{{BLOTTO_ORG_ID}}',BLOTTO_ORG_ID,$sql);
+        //echo $sql;
         try {
             $this->connection->query ($sql);
             tee ("Output {$this->connection->affected_rows} mandates\n");
@@ -668,7 +669,8 @@ $c = [
         $sql   .= file_get_contents (__DIR__.'/select_mandate.sql');
         $sql    = str_replace ('{{PST_REFNO_OFFSET}}',PST_REFNO_OFFSET,$sql);
         $sql    = str_replace ('{{WHERE}}',"AND `ClientRef`='$crf'",$sql);
-        echo $sql;
+        $sql                = str_replace ('{{BLOTTO_ORG_ID}}',BLOTTO_ORG_ID,$sql);
+        //echo $sql;
         try {
             $this->connection->query ($sql);
         }
@@ -680,11 +682,12 @@ $c = [
         }
         if ($db_live) {
             // Insert the live internal mandate
-            $q = "
+            $sql = "
               INSERT INTO `$db_live`.`paysuite_mandate`
               SELECT * FROM `paysuite_mandate`
               WHERE `ClientRef`='$crf'
             ";
+            error_log($sql);
             try {
                 $this->connection->query ($sql);
             }
@@ -695,7 +698,7 @@ $c = [
                 return false;
             }
             // Insert the live blotto2 mandate
-            $q = "
+            $sql = "
               INSERT INTO `$db_live`.`$table`
               SELECT * FROM `$table`
               WHERE `ClientRef`='$crf'
