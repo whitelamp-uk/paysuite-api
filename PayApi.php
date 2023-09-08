@@ -68,7 +68,14 @@ class PayApi {
         return $result;
     }
 
+    /*
+        * Send a generic request using cURL
+        * @param string $path to request
+        * @param array $options for cURL
+        * @return string
+    */
     private function curl_function ($path,$options=[]) {
+        // curl errors look like {"ErrorCode":7,"Detail":null,"Message":"API not enabled"}
         try {
             if ($result=$this->simulate()) {
                 return $result;
@@ -79,13 +86,6 @@ class PayApi {
             // However if it throws an exception, bail out
             return false;
         }
-    // errors look like {"ErrorCode":7,"Detail":null,"Message":"API not enabled"}
-    /*
-        * Send a generic request using cURL
-        * @param string $path to request
-        * @param array $options for cURL
-        * @return string
-    */
         $url = PST_URL.$path;
         $headers = [
             'Accept: application/json',
@@ -95,6 +95,8 @@ class PayApi {
             "Transfer-Encoding: ",  // fix php 7.4 bug https://bugs.php.net/bug.php?id=79013
             //"Content-Length: 0", needed? Or does curl work it out for you (likely)
         ];
+        // if using verbose logging
+        // $fperr = fopen('/home/dom/curlerr', 'w+'); 
         $defaults = [
             CURLOPT_HEADER => 0,
             CURLOPT_URL => $url,
@@ -104,21 +106,37 @@ class PayApi {
             CURLOPT_TIMEOUT => 45,
             CURLOPT_HTTPHEADER => $headers,
             //CURLOPT_HEADER => true,
-            CURLINFO_HEADER_OUT => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1, // seems to be another php 7.4 bug
+            //enable if printing out headers as below; cannot be used at same time as verbose output
+            //CURLINFO_HEADER_OUT => true, 
+            //CURLOPT_VERBOSE => true,
+            //CURLOPT_STDERR => $fperr,
         ];
         $ch = curl_init ();
         curl_setopt_array ($ch,$options+$defaults);
-        if (!($result=curl_exec($ch))) {
-            if (curl_errno($ch)==CURLE_OPERATION_TIMEDOUT) { // this is not a typo
+
+        while (!($result=curl_exec($ch))) {
+            /*echo "curl_getinfo:";
+            print_r(curl_getinfo($ch));
+            echo "curlerr:";
+            rewind ($fperr);
+            echo stream_get_contents($fperr);
+            ftruncate($fperr, 0);*/
+            if (curl_errno($ch)==CURLE_OPERATION_TIMEDOUT) { // CURLE_not a typo
                 $this->error_log (127,curl_error($ch));
             }
             else {
                 $this->error_log (126,curl_error($ch));
             }
-            throw new \Exception ("cURL error ".print_r(curl_error($ch), true));
-            return false;
+            if (++$attempts >= BLOTTO_CURL_ATTEMPTS) {
+                //fclose($fperr);
+                curl_close ($ch);
+                throw new \Exception ("cURL error ".print_r(curl_error($ch), true));
+                return false;
+            }
         }
+
+        /*
         $outHeaders = explode ("\n", curl_getinfo($ch,CURLINFO_HEADER_OUT));
         $outHeaders = array_filter (
             $outHeaders,
@@ -126,7 +144,10 @@ class PayApi {
                 return $value!=='' && $value!==' ' && strlen($value)!=1;
             }
         );
-        //print_r ($outHeaders);
+        print_r ($outHeaders);
+        */
+
+        //fclose($fperr);
         curl_close ($ch);
         $result = json_decode ($result);
         return $result;
@@ -188,6 +209,7 @@ class PayApi {
         }
         $post_options = [
             CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => array(), // try to fix 411 length required error
             //CURLOPT_POSTFIELDS => http_build_query ($post, null, '&', PHP_QUERY_RFC3986) // this was no good
             //CURLOPT_POSTFIELDS => json_encode ($post) // this was better until I tried to set the callback URL
         ];
