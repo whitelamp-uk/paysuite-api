@@ -413,7 +413,7 @@ class PayApi {
                 fwrite (STDERR,"No mandates to insert\n");
             }
             else {
-                error_log ("No mandates to insert\n");
+                error_log ("No mandates to insert");
             }
             return true;
         }
@@ -428,6 +428,9 @@ class PayApi {
                 $this->error_log (118,$msg);
                 if (defined('STDERR')) {
                     fwrite (STDERR,"$msg\n");
+                }
+                else {
+                    error_log ($msg);
                 }
             }
             elseif ($m['PayDay'] || $m['StartDate']) {
@@ -489,6 +492,9 @@ class PayApi {
                             $this->error_log (116,'SQL insert failed: '.$e->getMessage());
                             if (defined('STDERR')) {
                                 fwrite (STDERR,"SQL insert failed: ".$e->getMessage()."\n");
+                            }
+                            else {
+                                error_log ("SQL insert failed: ".$e->getMessage());
                             }
                         }
                     }
@@ -730,7 +736,12 @@ $c = [
             // This is only required if balances are needed for draws before the migration can be completed
             if (gmdate('Y-m-d')<PST_MIGRATE_DATE) {
                 // Only pretend to put the mandate until migration day
-                fwrite (STDERR,"WARNING: paysuite-api providing fake contract GUID={$mandate['ClientRef']}\n");
+                if (defined('STDERR')) {
+                    fwrite (STDERR,"WARNING: paysuite-api providing fake contract GUID={$mandate['ClientRef']}\n");
+                }
+                else {
+                    error_log ("WARNING: paysuite-api providing fake contract GUID={$mandate['ClientRef']}");
+                }
                 $mandate['ContractGuid'] = $mandate['ClientRef'];    
                 fwrite (STDERR,"WARNING: paysuite-api providing fake DDRefOrig={$mandate['ClientRef']}\n");
                 $mandate['DDRefOrig'] = $mandate['ClientRef'];    
@@ -778,7 +789,12 @@ $c = [
             // This is only required if balances are needed for draws before the migration can be completed
             if (gmdate('Y-m-d')<PST_MIGRATE_DATE) {
                 // Only pretend to put the mandate until migration day
-                fwrite (STDERR,"WARNING: paysuite-api providing fake customer GUID={$mandate['ClientRef']}\n");
+                if (defined('STDERR')) {
+                    fwrite (STDERR,"WARNING: paysuite-api providing fake customer GUID={$mandate['ClientRef']}\n");
+                }
+                else {
+                    error_log ("WARNING: paysuite-api providing fake customer GUID={$mandate['ClientRef']}");
+                }
                 $mandate['CustomerGuid'] = $mandate['ClientRef'];    
                 return true;
             }
