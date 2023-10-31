@@ -51,6 +51,35 @@ class PayApi {
     public function __destruct ( ) {
     }
 
+    public function cancel_mandate ($cref) {
+        $cref = $this->connection->real_escape_string($cref);
+        $sql = "
+          SELECT
+           `ContractGuid`
+          FROM `paysuite_mandate`
+          WHERE `ClientRef` = '$cref'
+        ";
+
+        try {
+            $result = $this->connection->query ($sql);
+            $c=$result->fetch_assoc() ;
+            if (!empty($c['ContractGuid'])) {
+                $response = $this->curl_post ("contract/{$c['ContractGuid']}/cancel");
+                return $response;
+            }
+        }
+        catch (\mysqli_sql_exception $e) {
+            $this->error_log (124,'SQL execute failed: '.$e->getMessage());
+            throw new \Exception ('SQL execution error '.$sql);
+            return false;
+        }
+        catch (\Exception $e) {
+            $this->error_log (123,'Cancel mandate failed: '.$e->getMessage());
+            throw new \Exception ('Cancel mandate error');
+            return false;
+        }
+    }
+
     private function curl_delete ($path,$options=[]) {
     /*
         * Send a DELETE request using cURL
@@ -195,7 +224,7 @@ class PayApi {
         return $result;
     }
 
-    private function curl_post ($path,$post,$options=[]) {
+    private function curl_post ($path,$post=[],$options=[]) {
     /*
         * Send a POST requst using cURL
         * @param string $path to request
@@ -214,7 +243,9 @@ class PayApi {
             //CURLOPT_POSTFIELDS => json_encode ($post) // this was better until I tried to set the callback URL
         ];
         $options += $post_options;
-        $path .= '?'.http_build_query ($post); // so sheesh, even POST needs to be a query string...
+        if (count($post)) {
+            $path .= '?'.http_build_query ($post); // so sheesh, even POST needs to be a query string...
+        }
         $result = $this->curl_function ($path,$options);
         return $result;
     }
