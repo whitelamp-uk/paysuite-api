@@ -51,6 +51,46 @@ class PayApi {
     public function __destruct ( ) {
     }
 
+    public function bad_mandates ( ) { 
+        $bads               = [];
+        $sql = "
+          SELECT
+            `m`.`ClientRef`
+           ,`m`.`Name`
+           ,`m`.`CustomerGuid`
+           ,`m`.`ContractGuid`
+          FROM `paysuite_mandate` AS `m`
+          JOIN `blotto_player` AS `p`
+            ON `p`.`client_ref`=`m`.`ClientRef`
+          JOIN `blotto_supporter` AS `s`
+            ON `s`.`id`=`p`.`supporter_id`
+          WHERE `s`.`mandate_blocked`>0
+            AND `m`.`MandateCreated` > DATE_SUB(NOW(), INTERVAL 2 MONTH)
+          ;
+        ";
+        echo "$sql\n";
+        $this->simulateMode = null;
+        try {
+            $results = $this->connection->query ($sql);
+            while ($m=$results->fetch_assoc()) {
+                $r = $this->curl_get ('customer/'.$m['CustomerGuid'].'/contract');
+                if (isset($r->Contracts)) {
+                    foreach ($r->Contracts as $c) { // should be only one
+                        if ($c->Id == $m['ContractGuid'] && $c->Status == 'Active') {
+                            $bads[] = ['ClientRef' => $m['ClientRef'], 'Name' => $m['Name']]; // or unset $m fields?
+                        }
+                    }
+                }
+            }
+        }
+        catch (\mysqli_sql_exception $e) {
+            $this->error_log (110,'SQL select failed: '.$e->getMessage());
+            throw new \Exception ('SQL error');
+            return false;
+        }
+        return $bads;
+    }
+
     public function cancel_mandate ($cref) {
         $cref = $this->connection->real_escape_string($cref);
         $sql = "
