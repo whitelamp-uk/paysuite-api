@@ -405,6 +405,7 @@ class PayApi {
         $sql = "
           SELECT
             `MandateId`
+           ,`CustomerGuid`
            ,`ContractGuid`
            ,`ClientRef`
           FROM `paysuite_mandate`
@@ -415,6 +416,7 @@ class PayApi {
             $result = $this->connection->query ($sql);
             while ($m=$result->fetch_assoc()) {
                 // Insert recent collections for this mandate
+                $this->update_status ($m);
                 $this->load_collections ($m);
             }
         }
@@ -570,7 +572,7 @@ class PayApi {
                            ,`Freq`='{$esc['Freq']}'
                            ,`Amount`='{$esc['Amount']}'
                            ,`ChancesCsv`='{$esc['Chances']}'
-                           ,`Status`=''
+                           ,`Status`='New'
                            ,`FailReason`=''
                           ON DUPLICATE KEY UPDATE
                             `ClientRef`='{$esc['ClientRef']}'
@@ -1092,6 +1094,18 @@ $c = [
         }
     }
 
+    private function update_status ($m) {
+        $r = $this->curl_get ('customer/'.$m['CustomerGuid'].'/contract');
+        if (isset($r->Contracts)) {
+            foreach ($r->Contracts as $c) { // should be only one
+                if ($c->Id == $m['ContractGuid']) {
+                    $q = "UPDATE `paysuite_mandate` SET `Status` = {$c->Status} WHERE `MandateId` = {$m['MandateId']}";
+                }
+            }
+        }
+    }
+
+    // test functions all at end
     private function test_callback() {
         $this->simulateMode = null;
         $r = $this->curl_get ('BACS/contract/callback');
