@@ -53,6 +53,7 @@ class PayApi {
 
     public function bad_mandates ( ) { 
         $bads               = [];
+        $interval           = PST_PAY_RECENT;
         $sql = "
           SELECT
             `m`.`ClientRef`
@@ -65,7 +66,7 @@ class PayApi {
           JOIN `blotto_supporter` AS `s`
             ON `s`.`id`=`p`.`supporter_id`
           WHERE `s`.`mandate_blocked`>0
-            AND `m`.`MandateCreated` > DATE_SUB(NOW(), INTERVAL 2 MONTH)
+            AND `m`.`MandateCreated`>DATE_SUB(NOW(),INTERVAL $interval)
           ;
         ";
         echo "$sql\n";
@@ -95,11 +96,10 @@ class PayApi {
         $cref = $this->connection->real_escape_string($cref);
         $sql = "
           SELECT
-           `ContractGuid`
+            `ContractGuid`
           FROM `paysuite_mandate`
-          WHERE `ClientRef` = '$cref'
+          WHERE `ClientRef`='$cref'
         ";
-
         try {
             $result = $this->connection->query ($sql);
             $c=$result->fetch_assoc() ;

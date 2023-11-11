@@ -9,6 +9,7 @@ define ( 'BLOTTO_PAY_API_PST_SELECT',   'SELECT DISTINCT(`ClientRef`) AS `crf` F
 define ( 'PST_TABLE_MANDATE',           'blotto_build mandate'            );
 define ( 'PST_TABLE_COLLECTION',        'blotto_build_collection'         );
 define ( 'PST_PAY_INTERVAL',            '2 DAY' ); // Ignore recent collections - see BACS behaviour
+define ( 'PST_PAY_RECENT',              '2 MONTH' ); // Ignore old mandates eg searching for inactive aka pending mandates
 
 
 
