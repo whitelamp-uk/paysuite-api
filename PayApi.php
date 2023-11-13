@@ -1099,7 +1099,7 @@ $c = [
         if (isset($r->Contracts)) {
             foreach ($r->Contracts as $c) { // should be only one
                 if ($c->Id == $m['ContractGuid']) {
-                    $q = "UPDATE `paysuite_mandate` SET `Status` = {$c->Status} WHERE `MandateId` = {$m['MandateId']}";
+                    $q = "UPDATE `paysuite_mandate` SET `Status` = '{$c->Status}' WHERE `MandateId` = {$m['MandateId']}";
                     try {
                         $this->connection->query ($q);
                     }
