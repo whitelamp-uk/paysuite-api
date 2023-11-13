@@ -1100,6 +1100,14 @@ $c = [
             foreach ($r->Contracts as $c) { // should be only one
                 if ($c->Id == $m['ContractGuid']) {
                     $q = "UPDATE `paysuite_mandate` SET `Status` = {$c->Status} WHERE `MandateId` = {$m['MandateId']}";
+                    try {
+                        $this->connection->query ($q);
+                    }
+                    catch (\mysqli_sql_exception $e) {
+                        $this->error_log (102,'SQL update failed: '.$e->getMessage());
+                        throw new \Exception ('SQL insert error');
+                        return false;
+                    }
                 }
             }
         }
