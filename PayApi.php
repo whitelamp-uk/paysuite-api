@@ -105,8 +105,16 @@ class PayApi {
             $c=$result->fetch_assoc() ;
             if (!empty($c['ContractGuid'])) {
                 $response = $this->curl_post ("contract/{$c['ContractGuid']}/cancel");
+
+                if (isset($response->Message)) { 
+                    if ($response->Message=='Contract cancelled') {
+                        return 'OK';
+                    }
+                    return $response->Message;
+                }
                 return $response;
             }
+            return "Could not find ContractGuid";
         }
         catch (\mysqli_sql_exception $e) {
             $this->error_log (124,'SQL execute failed: '.$e->getMessage());
@@ -704,7 +712,7 @@ $c = [
               ;
             ";
             try {
-                echo $sql."\n";
+                //echo $sql."\n";
                 $this->connection->query ($sql);
             }
             catch (\mysqli_sql_exception $e) {
