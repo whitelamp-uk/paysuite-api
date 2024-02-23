@@ -11,7 +11,7 @@ define ( 'PST_LIVE_API_KEY',            '**********'                      );
 define ( 'PST_TEST_API_KEY',            '**********'                      );
 define ( 'PST_API_KEY',                 '**********'                      );
 define ( 'PST_ERROR_LOG',               PST_TEST_API_KEY                  );
-define ( 'PST_FILE_DEBOGON',            '/my/debogon.sql'                 ); // No bogon-handling feature yet
+//define ( 'PST_FILE_DEBOGON',            '/my/debogon.sql'                 ); // No bogon-handling feature yet
 define ( 'PST_PAY_INTERVAL',            '2 DAY' ); // Ignore recent collections - see BACS behaviour
 define ( 'PST_TABLE_MANDATE',           'blotto_build mandate'            );
 define ( 'PST_TABLE_COLLECTION',        'blotto_build_collection'         );

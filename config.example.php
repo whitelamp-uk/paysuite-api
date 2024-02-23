@@ -47,7 +47,7 @@ define ( 'PST_SCHEDULE_6',              PST_TEST_SCHEDULE_6               );
 define ( 'PST_SCHEDULE_12',             PST_TEST_SCHEDULE_12              );
 
 define ( 'PST_ERROR_LOG',               false                             );
-define ( 'PST_FILE_DEBOGON',            '/my/debogon.sql'                 ); // No bogon-handling feature yet
+//define ( 'PST_FILE_DEBOGON',            '/my/debogon.sql'                 ); // No bogon-handling feature yet
 
 // What to add to mandate ID to provide an integer RefNo for the core code
 define ( 'PST_REFNO_OFFSET',            100000000                         );
