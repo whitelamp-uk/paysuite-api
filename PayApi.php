@@ -562,8 +562,17 @@ class PayApi {
                                 // ErrorCode 3 - Account holder name must contain only:
                                 // upper case letters (A-Z), numbers (0-9), full stop (.),
                                 // forward slash (/), dash (-), Ampersand (&) and space
+                                //TODO seems to let through "^" which is not allowed
                                 $v = strtr($v, '_~', '--'); // convert 'alternative' dashes
                                 $v = preg_replace ('<[^A-z0-9\./\-& ]>','',$v);
+                                $m[$k] = $v;
+                            }
+                            else if (in_array($k, ['AddressLine1', 'AddressLine2', 'AddressLine3', 'Town', 'County',])) {
+                                // similar for AddressLine1 AddressLine2 AddressLine3 Town County
+                                //upper case letters (A-Z), numbers (0-9), full stop (.), apostrophe ('), comma (,), forward slash (/), dash (-), 
+                                // round brackets ( () ), question mark (?), quotation mark ("), Ampersand (&) and space
+                                $v = strtr($v, '_~', '--'); // convert 'alternative' dashes
+                                $v = preg_replace ('<[^A-z0-9\.,/\-()\?"& ]>','',$v);
                                 $m[$k] = $v;
                             }
                             $esc[$k] = $this->connection->real_escape_string ($v);
