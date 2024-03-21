@@ -428,9 +428,8 @@ echo "PST: PayApi line ".__LINE__." time ".time()."\n";
                 $this->update_status ($m);
                 $this->load_collections ($m);
             }
-        }
-
 echo "PST: PayApi line ".__LINE__." time ".time()."\n";
+        }
         catch (\mysqli_sql_exception $e) {
             $this->error_log (124,'SQL execute failed: '.$e->getMessage());
             throw new \Exception ('SQL execution error');
