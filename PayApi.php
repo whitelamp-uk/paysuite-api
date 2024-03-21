@@ -407,7 +407,7 @@ class PayApi {
         //return;
         $from               = new \DateTime ($from);
         $this->from         = $from->format ('Y-m-d');
-        // Get all the mandates //DL: experimental add Status
+        // Get all the mandates //DL: using AND `Status` = 'Active' makes it much faster...
         $sql = "
           SELECT
             `MandateId`
@@ -416,7 +416,6 @@ class PayApi {
            ,`ClientRef`
           FROM `paysuite_mandate`
           WHERE DATE(`MandateCreated`)>='{$this->from}'
-            AND `Status` = 'Active'
           ORDER BY `MandateId`
         ";
 echo "PST: PayApi line ".__LINE__." time ".time()."\n";
@@ -738,11 +737,6 @@ $c = [
     }
 
     private function output_mandates ( ) {
-        $rows = $this->connection->query ("show tables");
-        while ($r=$rows->fetch_assoc()) {
-echo "PST: PayApi line ".__LINE__." show tables?  ".time();
-            print_r($r);
-        }
         $sql                = "INSERT INTO `".PST_TABLE_MANDATE."`\n";
         $sql               .= file_get_contents (__DIR__.'/select_mandate.sql');
         $sql                = str_replace ('{{PST_REFNO_OFFSET}}',PST_REFNO_OFFSET,$sql);
@@ -1123,7 +1117,7 @@ echo "PST: PayApi line ".__LINE__." show tables?  ".time();
         $r = $this->curl_get ('customer/'.$m['CustomerGuid'].'/contract');
         if (isset($r->Contracts)) {
             foreach ($r->Contracts as $c) { // should be only one
-                if ($c->Status != 'Active' && $c->Id == $m['ContractGuid']) { //DL: experimental
+                if ($c->Id == $m['ContractGuid']) { //DL: add $c->Status != 'Active' if only Active mandates are being queried as above
                     $q = "UPDATE `paysuite_mandate` SET `Status` = '{$c->Status}' WHERE `MandateId` = {$m['MandateId']}";
                     try {
                         $this->connection->query ($q);
