@@ -237,7 +237,6 @@ class PayApi {
         * @param array $options for cURL
         * @return string
     */
-echo "PST: ".__LINE__." ".microtime(true)." ".$path."\n";
         if (!is_array($params) || !is_array($options)) {
             throw new \Exception ('Params and option arguments must be arrays');
             return false;
@@ -246,10 +245,8 @@ echo "PST: ".__LINE__." ".microtime(true)." ".$path."\n";
             $path .= '?'.http_build_query($params);
         }
         $result = $this->curl_function ($path,$options);
-echo "PST: ".__LINE__." ".sizeof($result)." ".$path."\n";
         return $result;
     }
-
 
     private function curl_patch ($path,$post,$options=[]) {
     /*
@@ -410,7 +407,7 @@ echo "PST: ".__LINE__." ".sizeof($result)." ".$path."\n";
         //return;
         $from               = new \DateTime ($from);
         $this->from         = $from->format ('Y-m-d');
-        // Get all the mandates
+        // Get all the mandates //DL: experimental add Status
         $sql = "
           SELECT
             `MandateId`
@@ -419,8 +416,11 @@ echo "PST: ".__LINE__." ".sizeof($result)." ".$path."\n";
            ,`ClientRef`
           FROM `paysuite_mandate`
           WHERE DATE(`MandateCreated`)>='{$this->from}'
+            AND `Status` = 'Active'
           ORDER BY `MandateId`
         ";
+echo "PST: PayApi line ".__LINE__." time ".time()."\n";
+
         try {
             $result = $this->connection->query ($sql);
             while ($m=$result->fetch_assoc()) {
@@ -429,6 +429,8 @@ echo "PST: ".__LINE__." ".sizeof($result)." ".$path."\n";
                 $this->load_collections ($m);
             }
         }
+
+echo "PST: PayApi line ".__LINE__." time ".time()."\n";
         catch (\mysqli_sql_exception $e) {
             $this->error_log (124,'SQL execute failed: '.$e->getMessage());
             throw new \Exception ('SQL execution error');
@@ -439,8 +441,11 @@ echo "PST: ".__LINE__." ".sizeof($result)." ".$path."\n";
             throw new \Exception ('Load collections error');
             return false;
         }
+echo "PST: PayApi line ".__LINE__." time ".time()."\n";
         $this->output_mandates ();
+echo "PST: PayApi line ".__LINE__." time ".time()."\n";
         $this->output_collections ();
+echo "PST: PayApi line ".__LINE__." time ".time()."\n";
         error_log('Paysuite status and type combos: '.print_r($this->status_types, true));
     }
 
@@ -736,6 +741,7 @@ $c = [
     private function output_mandates ( ) {
         $rows = $this->connection->query ("show tables");
         while ($r=$rows->fetch_assoc()) {
+echo "PST: PayApi line ".__LINE__." show tables?  ".time();
             print_r($r);
         }
         $sql                = "INSERT INTO `".PST_TABLE_MANDATE."`\n";
@@ -1118,7 +1124,7 @@ $c = [
         $r = $this->curl_get ('customer/'.$m['CustomerGuid'].'/contract');
         if (isset($r->Contracts)) {
             foreach ($r->Contracts as $c) { // should be only one
-                if ($c->Id == $m['ContractGuid']) {
+                if ($c->Status != 'Active' && $c->Id == $m['ContractGuid']) { //DL: experimental
                     $q = "UPDATE `paysuite_mandate` SET `Status` = '{$c->Status}' WHERE `MandateId` = {$m['MandateId']}";
                     try {
                         $this->connection->query ($q);
