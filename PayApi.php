@@ -237,6 +237,7 @@ class PayApi {
         * @param array $options for cURL
         * @return string
     */
+echo "PST: ".__LINE__." ".microtime(true)." ".$path."\n";
         if (!is_array($params) || !is_array($options)) {
             throw new \Exception ('Params and option arguments must be arrays');
             return false;
@@ -245,6 +246,7 @@ class PayApi {
             $path .= '?'.http_build_query($params);
         }
         $result = $this->curl_function ($path,$options);
+echo "PST: ".__LINE__." ".sizeof($result)." ".$path."\n";
         return $result;
     }
 
@@ -409,7 +411,6 @@ class PayApi {
         $from               = new \DateTime ($from);
         $this->from         = $from->format ('Y-m-d');
         // Get all the mandates
-echo "PST: ".__LINE__." ".date("H:i:s");
         $sql = "
           SELECT
             `MandateId`
@@ -424,9 +425,7 @@ echo "PST: ".__LINE__." ".date("H:i:s");
             $result = $this->connection->query ($sql);
             while ($m=$result->fetch_assoc()) {
                 // Insert recent collections for this mandate
-echo "PST: ".__LINE__." ".date("H:i:s");
                 $this->update_status ($m);
-echo "PST: ".__LINE__." ".date("H:i:s");
                 $this->load_collections ($m);
             }
         }
@@ -440,11 +439,8 @@ echo "PST: ".__LINE__." ".date("H:i:s");
             throw new \Exception ('Load collections error');
             return false;
         }
-echo "PST: ".__LINE__." ".date("H:i:s");
         $this->output_mandates ();
-echo "PST: ".__LINE__." ".date("H:i:s");
         $this->output_collections ();
-echo "PST: ".__LINE__." ".date("H:i:s");
         error_log('Paysuite status and type combos: '.print_r($this->status_types, true));
     }
 
