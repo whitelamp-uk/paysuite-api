@@ -409,6 +409,7 @@ class PayApi {
         $from               = new \DateTime ($from);
         $this->from         = $from->format ('Y-m-d');
         // Get all the mandates
+echo "PST: ".__LINE__." ".date("H:i:s");
         $sql = "
           SELECT
             `MandateId`
@@ -423,7 +424,9 @@ class PayApi {
             $result = $this->connection->query ($sql);
             while ($m=$result->fetch_assoc()) {
                 // Insert recent collections for this mandate
+echo "PST: ".__LINE__." ".date("H:i:s");
                 $this->update_status ($m);
+echo "PST: ".__LINE__." ".date("H:i:s");
                 $this->load_collections ($m);
             }
         }
@@ -437,8 +440,11 @@ class PayApi {
             throw new \Exception ('Load collections error');
             return false;
         }
+echo "PST: ".__LINE__." ".date("H:i:s");
         $this->output_mandates ();
+echo "PST: ".__LINE__." ".date("H:i:s");
         $this->output_collections ();
+echo "PST: ".__LINE__." ".date("H:i:s");
         error_log('Paysuite status and type combos: '.print_r($this->status_types, true));
     }
 
@@ -878,7 +884,7 @@ $c = [
     }
 
     private function put_customer (&$mandate) {
-        foreach ($mandate as $k=>$v) { // perhaps this should be applied to $details further down - same was sortcode is sanitised there
+        foreach ($mandate as $k=>$v) { // perhaps this should be applied to $details further down - same as sortcode is sanitised there
             if ($k=='Name' || $k=='NamesFamily') {
                 // ErrorCode 3 - Account holder name must contain only:
                 // upper case letters (A-Z), numbers (0-9), full stop (.),
