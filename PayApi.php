@@ -418,7 +418,6 @@ class PayApi {
           WHERE DATE(`MandateCreated`)>='{$this->from}'
           ORDER BY `MandateId`
         ";
-echo "PST: PayApi line ".__LINE__." time ".time()."\n";
 
         try {
             $result = $this->connection->query ($sql);
@@ -427,7 +426,6 @@ echo "PST: PayApi line ".__LINE__." time ".time()."\n";
                 $this->update_status ($m);
                 $this->load_collections ($m);
             }
-echo "PST: PayApi line ".__LINE__." time ".time()."\n";
         }
         catch (\mysqli_sql_exception $e) {
             $this->error_log (124,'SQL execute failed: '.$e->getMessage());
@@ -439,11 +437,8 @@ echo "PST: PayApi line ".__LINE__." time ".time()."\n";
             throw new \Exception ('Load collections error');
             return false;
         }
-echo "PST: PayApi line ".__LINE__." time ".time()."\n";
         $this->output_mandates ();
-echo "PST: PayApi line ".__LINE__." time ".time()."\n";
         $this->output_collections ();
-echo "PST: PayApi line ".__LINE__." time ".time()."\n";
         error_log('Paysuite status and type combos: '.print_r($this->status_types, true));
     }
 
@@ -1118,7 +1113,8 @@ $c = [
         if (isset($r->Contracts)) {
             foreach ($r->Contracts as $c) { // should be only one
                 if ($c->Id == $m['ContractGuid']) { //DL: add $c->Status != 'Active' if only Active mandates are being queried as above
-                    $q = "UPDATE `paysuite_mandate` SET `Status` = '{$c->Status}' WHERE `MandateId` = {$m['MandateId']}";
+                    $failreason = ($c->StatusExplanation == 'N/A') ? '' : $c->StatusExplanation;
+                    $q = "UPDATE `paysuite_mandate` SET `Status` = '{$c->Status}', `FailReason` = '{$failreason}' WHERE `MandateId` = {$m['MandateId']}";
                     try {
                         $this->connection->query ($q);
                     }
