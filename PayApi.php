@@ -1113,8 +1113,9 @@ $c = [
         if (isset($r->Contracts)) {
             foreach ($r->Contracts as $c) { // should be only one
                 if ($c->Id == $m['ContractGuid']) { //DL: add $c->Status != 'Active' if only Active mandates are being queried as above
-                    $failreason = ($c->StatusExplanation == 'N/A') ? '' : $c->StatusExplanation;
-                    $q = "UPDATE `paysuite_mandate` SET `Status` = '{$c->Status}', `FailReason` = '{$failreason}' WHERE `MandateId` = {$m['MandateId']}";
+                    $status = $this->connection->real_escape_string($c->Status);
+                    $failreason = ($c->StatusExplanation == 'N/A') ? '' : $this->connection->real_escape_string($c->StatusExplanation);
+                    $q = "UPDATE `paysuite_mandate` SET `Status` = '{$status}', `FailReason` = '{$failreason}' WHERE `MandateId` = {$m['MandateId']}";
                     try {
                         $this->connection->query ($q);
                     }
