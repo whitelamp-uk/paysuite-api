@@ -91,6 +91,28 @@ class PayApi {
         return $bads;
     }
 
+    // bulk_payments clearer?  reflects their usage
+    public function bulk_credits ($credits, $date='', $comment='') {
+        // if date or comment empty, create sensible values, perhaps from config?
+        // date is YYYY-MM-DDT00:00:00.000, comment up to 256 characters
+        $data = ["Payments" => []]; // check this is right!
+        // get contractguids individually, no need to "optimise"
+        foreach ($credits as $cref => $amount) {
+            // get contractguid - abstract from cancel_mandate() into separate function
+            if ($guid) {
+                $data["Payments"][] = [
+                    "contract" => $guid,
+                    "amount" => x.yy,
+                    "date" => $date,
+                    "comment" => $comment,
+                    "isCredit" => true
+                ];
+            }
+        }
+        $response = $this->curl_post ("bulk/payments", $data);
+        return $response;
+    }
+
     public function cancel_mandate ($cref) {
         $cref = $this->connection->real_escape_string($cref);
         $sql = "
@@ -422,8 +444,9 @@ class PayApi {
         try {
             $result = $this->connection->query ($sql);
             while ($m=$result->fetch_assoc()) {
-                // Insert recent collections for this mandate
+                // Update mandate table if changes made their end; insert recent collections for this mandate
                 $this->update_status ($m);
+                $this->update_account_details ($m);
                 $this->load_collections ($m);
             }
         }
@@ -1125,6 +1148,32 @@ $c = [
                         return false;
                     }
                 }
+            }
+        }
+    }
+
+    private function update_account_details ($m) {
+        $r = $this->curl_get ('customer/'.$m['CustomerGuid']);
+        if (isset($r->Id)) {
+            //$ClientRef = $this->connection->real_escape_string($r->CustomerRef);
+            $name = $this->connection->real_escape_string($r->BankDetail->AccountHolderName);
+            // one step at a time...
+            $sortcode = $r->BankDetail->BankSortCode;
+            $sortcode = implode('-', str_split($sortcode,2));
+            $sortcode = $this->connection->real_escape_string($sortcode);
+            $account = $this->connection->real_escape_string($r->BankDetail->AccountNumber);
+
+            $q = "UPDATE `paysuite_mandate` SET `Name` = '{$name}', `Sortcode` = '{$sortcode}', `Account` = '{$account}' WHERE `MandateId` = {$m['MandateId']}";
+            try {
+                $this->connection->query ($q);
+                if ($this->connection->affected_rows) {
+                    error_log ($q);
+                }
+            }
+            catch (\mysqli_sql_exception $e) {
+                $this->error_log (102,'SQL update failed: '.$e->getMessage());
+                throw new \Exception ('SQL insert error');
+                return false;
             }
         }
     }
