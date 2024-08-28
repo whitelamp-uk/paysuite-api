@@ -149,6 +149,10 @@ class PayApi {
         }
     }
 
+    private function contractguid_from_cref ($cref) {
+
+    }
+
     private function curl_delete ($path,$options=[]) {
     /*
         * Send a DELETE request using cURL
@@ -832,7 +836,7 @@ $c = [
                 return false;
             }
         }
-        // TODO: cancel previous via API using $mandate[ClientRefPrevious]; in short term admin does it via provider dashboard
+        // Note that old mandate is cancelled in calling function update()
         // The API created the mandate and all other processes completed
         return true;
     }
