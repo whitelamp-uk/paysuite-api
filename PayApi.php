@@ -216,7 +216,7 @@ class PayApi {
         ];
         $ch = curl_init ();
         curl_setopt_array ($ch,$options+$defaults);
-
+        $attempts = 0;
         while (!($result=curl_exec($ch))) {
             /*echo "curl_getinfo:";
             print_r(curl_getinfo($ch));
