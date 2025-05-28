@@ -629,7 +629,7 @@ class PayApi {
                         $ok = true;
                     }
                     catch (\Exception $e) {
-                        error_log ('insert_mandate() failed: '.$e->getMessage());
+                        error_log ('insert_mandate() failed: '.$e->getMessage()."\n".print_r($m, true));
                     }
                 }
 
