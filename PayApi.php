@@ -434,6 +434,11 @@ class PayApi {
         $from               = new \DateTime ($from);
         $this->from         = $from->format ('Y-m-d');
         // Get all the mandates //DL: using AND `Status` = 'Active' makes it much faster...
+        $restrict = '';
+        if (date('l') != 'Sunday') { 
+            $restrict = "AND (`Status` = 'Active' OR `Updated` > DATE_SUB(CURDATE(),INTERVAL 60 DAY))";
+        }
+
         $sql = "
           SELECT
             `MandateId`
@@ -442,6 +447,7 @@ class PayApi {
            ,`ClientRef`
           FROM `paysuite_mandate`
           WHERE DATE(`MandateCreated`)>='{$this->from}'
+          ". $restrict ."
           ORDER BY `MandateId`
         ";
 
