@@ -347,6 +347,7 @@ class PayApi {
     }
 
     private function fetch_collections ($m) {
+        error_log("paysuite fetch_collections dd_before is ".$this->dd_before);
         $this->simulateMode = 'payment';
         $response = $this->curl_get ('contract/'.$m['ContractGuid'].'/payment');
         $collections = [];
@@ -365,6 +366,9 @@ class PayApi {
                             'amount' => $p->Amount,
                             'status' => $p->Status,
                         ];
+                    }
+                    else {
+                        error_log("ignored ".$date.' '.p->Amount.' '.p->Status);
                     }
                 } else {
                     error_log("Mandate:\n".print_r($m, true));
@@ -450,7 +454,7 @@ class PayApi {
           ". $restrict ."
           ORDER BY `MandateId`
         ";
-
+        error_log("paysuite import() sql is ".$sql);
         try {
             $result = $this->connection->query ($sql);
             while ($m=$result->fetch_assoc()) {
