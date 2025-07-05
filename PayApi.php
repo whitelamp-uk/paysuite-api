@@ -368,7 +368,7 @@ class PayApi {
                         ];
                     }
                     else {
-                        error_log("ignored ".$date.' '.p->Amount.' '.p->Status);
+                        error_log("ignored ".$date.' '.$p->Amount.' '.$p->Status);
                     }
                 } else {
                     error_log("Mandate:\n".print_r($m, true));
