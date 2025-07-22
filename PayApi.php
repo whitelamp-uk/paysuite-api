@@ -750,6 +750,7 @@ $c = [
 
     public function modify_mandate ($m)  {
         /*
+        TODO
         if either FF or the org has been asked to change the mandate by the supporter
         and the amount and frequency are unchanged (ie we need to keep the DDI but need alter sort code, account number and/or account name)
         then call this method from core function update() to make it happen through the API
