@@ -37,11 +37,10 @@ FROM `rsm_mandate`
 WHERE `IsCurrent`>0
 ORDER BY `DDRefOrig`
 ;
--- only create active DDIs remotely
 UPDATE `paysuite_mandate_test` AS `mnew`
 JOIN `rsm_mandate` AS `mold`
   ON `IsCurrent`>0
- AND `mold`.`Status` IN ('LIVE','PENDING')
+ AND `mold`.`Status` IN ('LIVE','PENDING') -- only create active DDIs remotely
  AND `mold`.`ClientRef`=`mnew`.`ClientRef`
 SET
   `mnew`.`CustomerGuid`=null
@@ -50,7 +49,7 @@ SET
 ;
 
 
--- collections (very slow)
+-- collections (slow to execute)
 DROP TABLE IF EXISTS `paysuite_collection_test`
 ;
 CREATE TABLE `paysuite_collection_test` LIKE `crucible2_bwh_make`.`paysuite_collection`
@@ -78,7 +77,7 @@ ORDER BY `DateDue`,`ClientRef`
 ;
 
 
--- foreign keys (a bit slow)
+-- foreign keys
 ALTER TABLE `paysuite_collection_test`
 ADD FOREIGN KEY (`MandateId`) REFERENCES `paysuite_mandate_test` (`MandateId`)
 ;
@@ -87,36 +86,67 @@ ADD FOREIGN KEY (`ClientRef`) REFERENCES `paysuite_mandate_test` (`ClientRef`)
 ;
 
 
--- push back anomalous collection dates
-UPDATE `paysuite_mandate`
-SET
-  `StartDate`=CONCAT(SUBSTR(`StartDate`,1,8),'08')
-WHERE SUBSTR(`StartDate`,9,2)>'01'
-  AND SUBSTR(`StartDate`,9,2)<'08'
+-- the data that normally would be given to insert_mandates() by payment_mandate.php
+DROP TABLE IF EXISTS `paysuite_transfer_supporter`
 ;
-UPDATE `paysuite_mandate`
-SET
-  `StartDate`=CONCAT(SUBSTR(`StartDate`,1,8),'15')
-WHERE SUBSTR(`StartDate`,9,2)>'08'
-  AND SUBSTR(`StartDate`,9,2)<'15'
-;
-UPDATE `paysuite_mandate`
-SET
-  `StartDate`=CONCAT(SUBSTR(`StartDate`,1,8),'22')
-WHERE SUBSTR(`StartDate`,9,2)>'15'
-  AND SUBSTR(`StartDate`,9,2)<'22'
-;
-UPDATE `paysuite_mandate`
-SET
-  `StartDate`=DATE_ADD(CONCAT(SUBSTR(`StartDate`,1,8),'01'),INTERVAL 1 MONTH)
-WHERE SUBSTR(`StartDate`,9,2)>'22'
-;
+CREATE TABLE `paysuite_transfer_supporter` AS
 SELECT
-  SUBSTR(`StartDate`,9,2) AS `PayDay`
- ,COUNT(*) AS `Qty`
-FROM `paysuite_mandate_test`
-GROUP BY `PayDay`
+  `m`.`ClientRef`
+ ,'C' AS `Type`
+ ,`p`.`chances` AS `Chances`
+ ,SUBSTR(`m`.`StartDate`,9,2) AS `PayDay`
+ ,`m`.`Name`
+ ,`m`.`Sortcode`
+ ,`m`.`Account`
+ ,`m`.`Amount`
+ ,`m`.`ChancesCsv`
+ ,`m`.`Freq`
+ ,GROUP_CONCAT(`c`.`title` ORDER BY `c`.`id` DESC LIMIT 1) AS `Title`
+ ,GROUP_CONCAT(`c`.`name_first` ORDER BY `c`.`id` DESC LIMIT 1) AS `NamesGiven`
+ ,GROUP_CONCAT(`c`.`name_last` ORDER BY `c`.`id` DESC LIMIT 1) AS `NamesFamily`
+ ,0 AS `EasternOrder`
+ ,GROUP_CONCAT(`c`.`email` ORDER BY `c`.`id` DESC LIMIT 1) AS `Email`
+ ,GROUP_CONCAT(`c`.`address_1` ORDER BY `c`.`id` DESC LIMIT 1) AS `AddressLine1`
+ ,GROUP_CONCAT(`c`.`address_2` ORDER BY `c`.`id` DESC LIMIT 1) AS `AddressLine2`
+ ,GROUP_CONCAT(`c`.`address_3` ORDER BY `c`.`id` DESC LIMIT 1) AS `AddressLine3`
+ ,GROUP_CONCAT(`c`.`town` ORDER BY `c`.`id` DESC LIMIT 1) AS `Town`
+ ,GROUP_CONCAT(`c`.`county` ORDER BY `c`.`id` DESC LIMIT 1) AS `County`
+ ,GROUP_CONCAT(`c`.`postcode` ORDER BY `c`.`id` DESC LIMIT 1) AS `Postcode`
+ ,GROUP_CONCAT(`c`.`country` ORDER BY `c`.`id` DESC LIMIT 1) AS `Country`
+FROM `paysuite_mandate_test` AS `m`
+JOIN `blotto_player` AS `p`
+  ON `p`.`client_ref`=`m`.`ClientRef`
+JOIN `blotto_contact` AS `c`
+  ON `c`.`supporter_id`=`p`.`supporter_id`
+WHERE `m`.`CustomerGuid` IS NULL -- the mandates that need creating remotely (still active)
+GROUP BY `m`.`MandateId`
 ;
+-- push back anomalous pay days
+UPDATE `paysuite_transfer_supporter`
+SET
+  `PayDay`='08'
+WHERE `PayDay`>'01'
+  AND `PayDay`<'08'
+;
+UPDATE `paysuite_transfer_supporter`
+SET
+  `PayDay`='15'
+WHERE `PayDay`>'08'
+  AND `PayDay`<'15'
+;
+UPDATE `paysuite_transfer_supporter`
+SET
+  `PayDay`='22'
+WHERE `PayDay`>'15'
+  AND `PayDay`<'22'
+;
+UPDATE `paysuite_transfer_supporter`
+SET
+  `PayDay`='01'
+WHERE `PayDay`>'22'
+;
+
+
 
 -- rename the tables
 ALTER TABLE `paysuite_mandate_test` RENAME TO `paysuite_mandate`
