@@ -87,6 +87,37 @@ ADD FOREIGN KEY (`ClientRef`) REFERENCES `paysuite_mandate_test` (`ClientRef`)
 ;
 
 
+-- push back anomalous collection dates
+UPDATE `paysuite_mandate`
+SET
+  `StartDate`=CONCAT(SUBSTR(`StartDate`,1,8),'08')
+WHERE SUBSTR(`StartDate`,9,2)>'01'
+  AND SUBSTR(`StartDate`,9,2)<'08'
+;
+UPDATE `paysuite_mandate`
+SET
+  `StartDate`=CONCAT(SUBSTR(`StartDate`,1,8),'15')
+WHERE SUBSTR(`StartDate`,9,2)>'08'
+  AND SUBSTR(`StartDate`,9,2)<'15'
+;
+UPDATE `paysuite_mandate`
+SET
+  `StartDate`=CONCAT(SUBSTR(`StartDate`,1,8),'22')
+WHERE SUBSTR(`StartDate`,9,2)>'15'
+  AND SUBSTR(`StartDate`,9,2)<'22'
+;
+UPDATE `paysuite_mandate`
+SET
+  `StartDate`=DATE_ADD(CONCAT(SUBSTR(`StartDate`,1,8),'01'),INTERVAL 1 MONTH)
+WHERE SUBSTR(`StartDate`,9,2)>'22'
+;
+SELECT
+  SUBSTR(`StartDate`,9,2) AS `PayDay`
+ ,COUNT(*) AS `Qty`
+FROM `paysuite_mandate_test`
+GROUP BY `PayDay`
+;
+
 -- rename the tables
 ALTER TABLE `paysuite_mandate_test` RENAME TO `paysuite_mandate`
 ;
