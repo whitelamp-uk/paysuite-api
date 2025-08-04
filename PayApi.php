@@ -748,21 +748,6 @@ $c = [
         }
     }
 
-    public function modify_mandate ($m)  {
-        /*
-        TODO
-        if either FF or the org has been asked to change the mandate by the supporter
-        and the amount and frequency are unchanged (ie we need to keep the DDI but need alter sort code, account number and/or account name)
-        then call this method from core function update() to make it happen through the API
-        admins going the to blotto_bacs table to process these requests manually is not sustainable
-
-        also I am not sure they even get an email that says they have to do this any more
-
-        normally these details will get amended by the banks when he supporter changes account
-        but if we are asked to do this I believe we are not allowed to assume anything so we must act on the data
-        */
-    }
-
     private function output_collections ( ) {
         $sql                = "INSERT INTO `".PST_TABLE_COLLECTION."`\n";
         $sql               .= file_get_contents (__DIR__.'/select_collection.sql');
@@ -862,6 +847,38 @@ $c = [
         // The API created the mandate and all other processes completed
         return true;
     }
+
+
+    public function player_modify ($m)  {
+        /*
+        TODO
+        if either FF or the org has been asked to change the mandate by the supporter
+        and the amount and frequency are unchanged (ie we need to keep the DDI but need alter sort code, account number and/or account name)
+        then call this method from core function update() to make it happen through the API
+        admins going the to blotto_bacs table to process these requests manually is not sustainable
+
+        "also I am not sure they even get an email that says they have to do this any more" - DL: they do. Have checked logs.
+
+        normally these details will get amended by the banks when he supporter changes account
+        but if we are asked to do this I believe we are not allowed to assume anything so we must act on the data
+        */
+
+        /* procedure
+        Inputs: clientref (mandatory), name, sortcode, account (optional)
+        Fetch customerguid from paysuite_mandates
+        $patchdetails = [
+            "AccountNumber" => "82345671",
+            "BankSortCode" => "823456",
+            "AccountHolderName" => "J bloggs",
+        ];
+        $r = $this->curl_patch('customer/3a02c36f-65dd-4569-ad7f-f7d420d56cdd', $patchdetails);
+        update paysuite_mandate, blotto_build_mandate on live and make databases if success
+        email to confirm change.
+
+        */
+
+    }
+
 
     private function put_contract (&$mandate) {
         echo "put_contract ";
