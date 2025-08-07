@@ -7,6 +7,7 @@ $pw  = '';
 $db  = '';
 $url = 'https://ddcms.accesspaysuite.com/api/v3/client/******/contract/';
 $key = '';
+$dom = '01'; // day of month
 
 $con = new mysqli ('localhost',$un,$pw,$db);
 
@@ -15,7 +16,7 @@ if (!$con) {
 	exit;
 }
 
-$q = "SELECT MandateId, ContractGuid, Amount from paysuite_mandate ";
+$q = "SELECT MandateId, ContractGuid, Amount FROM paysuite_mandate WHERE Status = 'Active' AND SUBSTR(StartDate, 9,2) = '".$dom."'";
 $res = $con->query($q);
 while ($row = $res->fetch_assoc()) {
 	$id = $row['MandateId'];
@@ -30,6 +31,15 @@ while ($row = $res->fetch_assoc()) {
 	} else if ($amnt == '8.68') {
 		$new = '10.00';
 		$comment = 'Amount%20changed%20to%20ten%20pounds';
+	} else if ($amnt == '13.02') {
+		$new = '15.00';
+		$comment = 'Amount%20changed%20to%20fifteen%20pounds';
+	} else if ($amnt == '17.36') {
+		$new = '20.00';
+		$comment = 'Amount%20changed%20to%20twenty%20pounds';
+	} else if ($amnt == '21.70') {
+		$new = '25.00';
+		$comment = 'Amount%20changed%20to%20twenty-five%20pounds';
 	} else {
 		echo "amnt is $amnt\n";
 		continue;
