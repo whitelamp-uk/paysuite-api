@@ -546,7 +546,7 @@ class PayApi {
         return true;
     }
 
-    public function insert_mandates ($mandates,&$bad=0,&$good=0)  {
+    public function insert_mandates ($mandates,&$bad=0,&$good=0,&$tooearly=0,&$toolate=0)  {
         if (!count($mandates)) {
             if (defined('STDERR')) {
                 fwrite (STDERR,"No mandates to insert\n");
@@ -572,6 +572,16 @@ class PayApi {
             elseif ($m['PayDay'] || $m['StartDate']) {
                 if (empty($m['StartDate'])) {
                     $m['StartDate'] = collection_startdate (gmdate('Y-m-d'),$m['PayDay']);
+                }
+                if (defined('PST_FIRST_MONTH') && ((string)$m['StartDate'])<PST_FIRST_MONTH.'-01') {
+                    $tooearly++;
+                    $body .= $m['ClientRef']." TOO EARLY {$m['StartDate']} requested\n";
+                    continue;
+                }
+                if (defined('PST_LAST_MONTH') && ((string)$m['StartDate'])>PST_LAST_MONTH.'-31') {
+                    $toolate++;
+                    $body .= $m['ClientRef']." TOO LATE - {$m['StartDate']} requested\n";
+                    continue;
                 }
                 $qs = "
                   SELECT
@@ -686,6 +696,12 @@ class PayApi {
         }
         else {
             $subj = "Paysuite insert mandates for ".strtoupper(BLOTTO_ORG_USER).", $good good, $bad bad";
+            if ($tooearly>0) {
+                $subj .= ", $tooearly too early";
+            }
+            if ($toolate>0) {
+                $subj .= ", $toolate too late";
+            }
         }
         mail (BLOTTO_EMAIL_WARN_TO,$subj,$body);
         return true;
@@ -786,8 +802,8 @@ $c = [
     public function player_new ($mandate,$db_live=null) {
         // Use API and insert the internal mandate
         $bad = 0;
-        $this->insert_mandates ([$mandate],$bad); // convert mandate to array
-        if ($bad>0) {
+        $this->insert_mandates ([$mandate],$bad,$good,$tooearly,$toolate); // convert mandate to array
+        if ($good<1) {
             // The API did not create the mandate
             return null;
         }
