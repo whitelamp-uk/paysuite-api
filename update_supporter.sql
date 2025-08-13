@@ -9,9 +9,10 @@ LEFT JOIN (
     `DDRefOrig`
    ,DATE_ADD(DATE_ADD(MAX(`DateDue`),INTERVAL 1 MONTH),INTERVAL 7 DAY) AS `DateKnown`
   FROM `paysuite_collection`
-  GROUP BY `DDRefOrig`
+  WHERE `Status`!='Unpaid'
+  GROUP BY `MandateId`
 ) AS `c`
-  ON `c`.`DDRefOrig`=`m`.`DDRefOrig`
+  ON `c`.`MandateId`=`m`.`MandateId`
 SET
   -- blotto code prefers notional milestone dates (that can be derived by principle) over unpredictable reality
   -- the notional discovery date for this is essentially the same as when we discover cancellation by rule
