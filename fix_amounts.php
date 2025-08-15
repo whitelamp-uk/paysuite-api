@@ -2,17 +2,27 @@
 // copy this somewhere "safe", fill in the config, check that the amount conversion is what you want
 // do a test run, check response, comment out the break at the end so it runs to completion.
 // could no doubt be modified to patch other attributes of the contract
+
+// NB work in progress
+
+$org = 'xyz';
+require 'apikeys.php'; // 
+$code_key = $apikeys[strtoupper('$org')];
+list($clientcode, $key) = explode('::', $code_key);
+
 $un  = '';
 $pw  = '';
-$db  = '';
-$url = 'https://ddcms.accesspaysuite.com/api/v3/client/******/contract/';
-$key = '';
+$db  = 'crucible2_'.$org;
+$dbm = $db.'_make';
+$url = 'https://ddcms.accesspaysuite.com/api/v3/client/'.$clientcode.'/contract/';
+//$key = '';
 $dom = '01'; // day of month
 
 $con = new mysqli ('localhost',$un,$pw,$db);
+$cnm = new mysqli ('localhost',$un,$pw,$dbm);
 
-if (!$con) {
-	echo "oops\n";
+if (!$con || !$cnm) {
+	echo "oops\ndatabase connection failure\n";
 	exit;
 }
 
@@ -24,6 +34,11 @@ while ($row = $res->fetch_assoc()) {
 	$guid = $row['ContractGuid'];
 	echo $guid.' '.$amnt."\n";
 
+	if (strlen($guid) > 10) {
+		$r = exec( "curl --silent -L -g '".$url.$guid."' -H 'apiKey: ".$key."'");
+		print_r(json_decode($r));
+		exit;
+	}
 	// possibly - divide amount by 4.34, multiply by five, format to 2 dp, only patch if $new != $amnt
 	if ($amnt == '4.34') {
 		$new = '5.00';

@@ -1197,6 +1197,8 @@ $c = [
                 if ($c->Id == $m['ContractGuid']) { //DL: add $c->Status != 'Active' if only Active mandates are being queried as above
                     $status = $this->connection->real_escape_string($c->Status);
                     $failreason = ($c->StatusExplanation == 'N/A') ? '' : $this->connection->real_escape_string($c->StatusExplanation);
+                    // TODO only do this if something has changed!
+                    // TODO also change amount (etc.)
                     $q = "UPDATE `paysuite_mandate` SET `Status` = '{$status}', `FailReason` = '{$failreason}' WHERE `MandateId` = {$m['MandateId']}";
                     try {
                         $this->connection->query ($q);
@@ -1221,7 +1223,7 @@ $c = [
             $sortcode = implode('-', str_split($sortcode,2));
             $sortcode = $this->connection->real_escape_string($sortcode);
             $account = $this->connection->real_escape_string($r->BankDetail->AccountNumber);
-
+            // TODO only do this if something has changed!
             $q = "UPDATE `paysuite_mandate` SET `Name` = '{$name}', `Sortcode` = '{$sortcode}', `Account` = '{$account}' WHERE `MandateId` = {$m['MandateId']}";
             try {
                 $this->connection->query ($q);
