@@ -547,6 +547,10 @@ class PayApi {
     }
 
     public function insert_mandates ($mandates,&$bad=0,&$good=0,&$tooearly=0,&$toolate=0)  {
+        $bad        = intval ($bad);
+        $good       = intval ($good);
+        $tooearly   = intval ($tooearly);
+        $toolate    = intval ($toolate);
         if (!count($mandates)) {
             if (defined('STDERR')) {
                 fwrite (STDERR,"No mandates to insert\n");
@@ -801,7 +805,6 @@ $c = [
 
     public function player_new ($mandate,$db_live=null) {
         // Use API and insert the internal mandate
-        $bad = 0;
         $this->insert_mandates ([$mandate],$bad,$good,$tooearly,$toolate); // convert mandate to array
         if ($good<1) {
             // The API did not create the mandate
