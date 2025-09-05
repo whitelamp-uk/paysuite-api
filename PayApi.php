@@ -34,7 +34,7 @@ class PayApi {
                     'TwelveMonthly' => PST_SCHEDULE_12,
                 ];
     public      $database;
-    public      $dd_before;
+    public      $dd_before; // TODO get rid of this
     public      $diagnostic;
     public      $error;
     public      $errorCode = 0;
@@ -347,7 +347,6 @@ class PayApi {
     }
 
     private function fetch_collections ($m) {
-        error_log("paysuite fetch_collections dd_before is ".$this->dd_before);
         $this->simulateMode = 'payment';
         $response = $this->curl_get ('contract/'.$m['ContractGuid'].'/payment');
         $collections = [];
@@ -359,7 +358,8 @@ class PayApi {
                 }
                 if ($p->Type == 'BACS') {
                     $date = substr ($p->Date,0,10);
-                    if ($date<$this->dd_before) { // TODO: made conditional after seeing collections for 2022-06-01 in paysuite_collection when inspecting the data on 2022-05-30
+                    $today = date('Y-m-d');
+                    if ($date<=$today) { // TODO: made conditional after seeing collections for 2022-06-01 in paysuite_collection when inspecting the data on 2022-05-30
                         $collections[] = [
                             'payment_guid' => $p->Id,
                             'date_collected' => $date,
