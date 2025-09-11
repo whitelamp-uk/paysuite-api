@@ -348,7 +348,11 @@ class PayApi {
 
     private function fetch_collections ($m) {
         $this->simulateMode = 'payment';
-        $response = $this->curl_get ('contract/'.$m['ContractGuid'].'/payment');
+        $endpoint = 'contract/'.$m['ContractGuid'].'/payment';
+        if (date('l') == 'Sunday') { 
+            $endpoint .= '?rows=100';
+        }
+        $response = $this->curl_get ($endpoint);
         $collections = [];
         if (isset($response->Payments)) {
             foreach ($response->Payments as $p) {
@@ -459,9 +463,9 @@ class PayApi {
             $result = $this->connection->query ($sql);
             while ($m=$result->fetch_assoc()) {
                 // Update mandate table if changes made their end; insert recent collections for this mandate
-                $this->update_status ($m);
-                $this->update_account_details ($m);
-                $this->load_collections ($m);
+                $this->update_account_details ($m); // from customers API
+                $this->update_status ($m); // from contracts API
+                $this->load_collections ($m); // from payments API
             }
         }
         catch (\mysqli_sql_exception $e) {
@@ -1216,6 +1220,8 @@ $c = [
         }
     }
 
+    // TODO (maybe) if we got all customer details in one go we could avoid multiple curl calls
+    // which would speed things up
     private function update_account_details ($m) {
         $r = $this->curl_get ('customer/'.$m['CustomerGuid']);
         if (isset($r->Id)) {
