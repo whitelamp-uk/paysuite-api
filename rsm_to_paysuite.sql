@@ -1,9 +1,15 @@
 
+
+
 -- mandates
-DROP TABLE IF EXISTS `paysuite_mandate_test`
+
+-- get rid of last attempt
+DROP TABLE IF EXISTS `paysuite_collection_test`
 ;
+-- copy a data structure, say BWH
 CREATE TABLE `paysuite_mandate_test` LIKE `crucible2_bwh_make`.`paysuite_mandate`
 ;
+-- transform
 INSERT INTO `paysuite_mandate_test` (
   `CustomerGuid`
  ,`ContractGuid`
@@ -20,9 +26,9 @@ INSERT INTO `paysuite_mandate_test` (
  ,`FailReason`
 )
 SELECT
-  `ClientRef`
- ,`ClientRef`
- ,`DDRefOrig`
+  null
+ ,null
+ ,null
  ,`ClientRef`
  ,`Name`
  ,`Sortcode`
@@ -34,26 +40,21 @@ SELECT
  ,`Status`
  ,`FailReason`
 FROM `rsm_mandate`
-WHERE `IsCurrent`>0
+WHERE `IsCurrent`>0 -- RSM quirk
+AND `Status` IN ('LIVE','PENDING') -- only recreate active DDIs
 ORDER BY `DDRefOrig`
 ;
-UPDATE `paysuite_mandate_test` AS `mnew`
-JOIN `rsm_mandate` AS `mold`
-  ON `IsCurrent`>0
- AND `mold`.`Status` IN ('LIVE','PENDING') -- only create active DDIs remotely
- AND `mold`.`ClientRef`=`mnew`.`ClientRef`
-SET
-  `mnew`.`CustomerGuid`=null
- ,`mnew`.`ContractGuid`=null
- ,`mnew`.`DDRefOrig`=null
-;
 
 
--- collections (slow to execute)
-DROP TABLE IF EXISTS `paysuite_collection_test`
+-- collections (slow)
+
+-- get rid of last attempt
+DROP TABLE IF EXISTS `paysuite_mandate_test`
 ;
+-- copy a data structure, say BWH
 CREATE TABLE `paysuite_collection_test` LIKE `crucible2_bwh_make`.`paysuite_collection`
 ;
+-- transform
 INSERT INTO `paysuite_collection_test` (
   `PaymentGuid`
  ,`MandateId`
@@ -63,7 +64,7 @@ INSERT INTO `paysuite_collection_test` (
  ,`Status`
 )
 SELECT
-  CONCAT(SUBSTR(`m`.`ClientRef`,1,16),SUBSTR(`m`.`ClientRef`,25,8),'-',`c`.`DateDue`) -- 32-char ClientRefs are too long - column is char(36)
+  CONCAT(SUBSTR(`m`.`ClientRef`,1,16),SUBSTR(`m`.`ClientRef`,25,8),'-',`c`.`DateDue`) -- 32-char ClientRefs are too long - column is char(24)
  ,`m`.`MandateId`
  ,`m`.`ClientRef`
  ,`c`.`DateDue`
@@ -75,8 +76,6 @@ JOIN `paysuite_mandate_test` AS `m`
 WHERE `c`.`PayStatus`='PAID' -- no need to copy across UNPAID collections
 ORDER BY `DateDue`,`ClientRef`
 ;
-
-
 -- foreign keys
 ALTER TABLE `paysuite_collection_test`
 ADD FOREIGN KEY (`MandateId`) REFERENCES `paysuite_mandate_test` (`MandateId`)
@@ -87,8 +86,11 @@ ADD FOREIGN KEY (`ClientRef`) REFERENCES `paysuite_mandate_test` (`ClientRef`)
 
 
 -- the data that normally would be given to insert_mandates() by payment_mandate.php
+-- our script is based on payment_mandate.php
+-- get rid of last attempt
 DROP TABLE IF EXISTS `paysuite_transfer_supporter`
 ;
+-- transform
 CREATE TABLE `paysuite_transfer_supporter` AS
 SELECT
   `m`.`ClientRef`
@@ -118,9 +120,11 @@ JOIN `blotto_player` AS `p`
   ON `p`.`client_ref`=`m`.`ClientRef`
 JOIN `blotto_contact` AS `c`
   ON `c`.`supporter_id`=`p`.`supporter_id`
-WHERE `m`.`CustomerGuid` IS NULL -- the mandates that need creating remotely (still active)
 GROUP BY `m`.`MandateId`
 ;
+
+
+/*
 -- push back anomalous pay days
 UPDATE `paysuite_transfer_supporter`
 SET
@@ -145,14 +149,18 @@ SET
   `PayDay`='01'
 WHERE `PayDay`>'22'
 ;
+*/
 
 
 
+/*
 -- rename the tables
 ALTER TABLE `paysuite_mandate_test` RENAME TO `paysuite_mandate`
 ;
 ALTER TABLE `paysuite_collection_test` RENAME TO `paysuite_collection`
 ;
+*/
+
 
 
 -- that's all folks
