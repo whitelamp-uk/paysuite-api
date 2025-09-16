@@ -26,10 +26,22 @@ INSERT INTO `paysuite_mandate_test` (
  ,`FailReason`
 )
 SELECT
-  null
- ,null
- ,null
- ,`ClientRef`
+  IF(
+    `Status` IN ('LIVE','PENDING')
+   ,null
+   ,`ClientRef`
+  )
+ ,IF(
+    `Status` IN ('LIVE','PENDING')
+   ,null
+   ,`ClientRef`
+  )
+ ,IF(
+    `Status` IN ('LIVE','PENDING')
+   ,null
+   ,`ClientRef`
+  )
+ ,`DDRefOrig`
  ,`Name`
  ,`Sortcode`
  ,`Account`
@@ -40,8 +52,7 @@ SELECT
  ,`Status`
  ,`FailReason`
 FROM `rsm_mandate`
-WHERE `IsCurrent`>0 -- RSM quirk
-AND `Status` IN ('LIVE','PENDING') -- only recreate active DDIs
+WHERE `IsCurrent`>0 -- RSM quirk but get all players
 ORDER BY `DDRefOrig`
 ;
 
@@ -120,6 +131,7 @@ JOIN `blotto_player` AS `p`
   ON `p`.`client_ref`=`m`.`ClientRef`
 JOIN `blotto_contact` AS `c`
   ON `c`.`supporter_id`=`p`.`supporter_id`
+WHERE `m`.`CustomerGuid` IS NULL -- just those that need creating (live or pending at RSM)
 GROUP BY `m`.`MandateId`
 ;
 
