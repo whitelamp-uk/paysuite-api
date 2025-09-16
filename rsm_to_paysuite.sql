@@ -39,9 +39,9 @@ SELECT
  ,IF(
     `Status` IN ('LIVE','PENDING')
    ,null
-   ,`ClientRef`
+   ,`DDRefOrig`
   )
- ,`DDRefOrig`
+ ,`ClientRef`
  ,`Name`
  ,`Sortcode`
  ,`Account`
