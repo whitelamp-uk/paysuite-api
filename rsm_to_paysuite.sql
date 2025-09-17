@@ -112,7 +112,15 @@ SELECT
  ,`m`.`Sortcode`
  ,`m`.`Account`
  ,`m`.`Amount`
- ,`m`.`ChancesCsv`
+ ,IF(
+    `m`.`Freq`='Monthly'
+   ,CAST(ROUND(`m`.`Amount`/5,0) AS CHAR CHARACTER SET ascii)
+   ,IF(
+      `m`.`Freq`='Monthly'
+     ,CAST(ROUND(`m`.`Annually`/60,0) AS CHAR CHARACTER SET ascii)
+     ,''
+    )
+  ) AS `ChancesCsv`
  ,`m`.`Freq`
  ,GROUP_CONCAT(`c`.`title` ORDER BY `c`.`id` DESC LIMIT 1) AS `Title`
  ,GROUP_CONCAT(`c`.`name_first` ORDER BY `c`.`id` DESC LIMIT 1) AS `NamesGiven`
