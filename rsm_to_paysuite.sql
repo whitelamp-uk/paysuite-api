@@ -116,8 +116,8 @@ SELECT
     `m`.`Freq`='Monthly'
    ,CAST(ROUND(`m`.`Amount`/5,0) AS CHAR CHARACTER SET ascii)
    ,IF(
-      `m`.`Freq`='Monthly'
-     ,CAST(ROUND(`m`.`Annually`/60,0) AS CHAR CHARACTER SET ascii)
+      `m`.`Freq`='Annually'
+     ,CAST(ROUND(`m`.`Amount`/60,0) AS CHAR CHARACTER SET ascii)
      ,''
     )
   ) AS `ChancesCsv`
