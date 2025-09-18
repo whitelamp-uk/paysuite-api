@@ -41,7 +41,7 @@ class PayApi {
     protected   $simulateMode;
 
 
-    public function __construct ($connection,$org=null) {
+    public function __construct ($connection,$org=null) { // connection usually to make database
         $this->connection   = $connection;
         $this->org          = $org;
         $this->setup ();
@@ -98,7 +98,6 @@ class PayApi {
         $data = ["Payments" => []]; // check this is right!
         // get contractguids individually, no need to "optimise"
         foreach ($credits as $cref => $amount) {
-            // get contractguid - abstract from cancel_mandate() into separate function
             if ($guid) {
                 $data["Payments"][] = [
                     "contract" => $guid,
@@ -113,44 +112,30 @@ class PayApi {
         return $response;
     }
 
+    // returns string, other "update()" functions return boolean...
     public function cancel_mandate ($cref) {
-        $cref = $this->connection->real_escape_string($cref);
-        $sql = "
-          SELECT
-            `ContractGuid`
-          FROM `paysuite_mandate`
-          WHERE `ClientRef`='$cref'
-        ";
-        try {
-            $result = $this->connection->query ($sql);
-            $c=$result->fetch_assoc() ;
-            if (!empty($c['ContractGuid'])) {
-                $response = $this->curl_post ("contract/{$c['ContractGuid']}/cancel");
+        $details = $this->mandate_details ($cref,['ContractGuid']);
+        $ContractGuid = $details['ContractGuid'];
 
-                if (isset($response->Message)) { 
-                    if ($response->Message=='Contract cancelled') {
-                        return 'OK';
-                    }
-                    return $response->Message;
-                }
-                return $response;
-            }
-            return "Could not find ContractGuid";
-        }
-        catch (\mysqli_sql_exception $e) {
-            $this->error_log (124,'SQL execute failed: '.$e->getMessage());
-            throw new \Exception ('SQL execution error '.$sql);
+        if (!$ContractGuid) {
+            $this->error_log (123,'Cancel mandate failed: could not find contractguid for '.$cref);
             return false;
+        }
+        try {
+            $response = $this->curl_post ("contract/{$ContractGuid}/cancel");
+            if (isset($response->Message)) { 
+                if ($response->Message=='Contract cancelled') {
+                    return 'OK';
+                }
+                return $response->Message;
+            }
+            return $response;
         }
         catch (\Exception $e) {
             $this->error_log (123,'Cancel mandate failed: '.$e->getMessage());
             throw new \Exception ('Cancel mandate error');
             return false;
         }
-    }
-
-    private function contractguid_from_cref ($cref) {
-
     }
 
     private function curl_delete ($path,$options=[]) {
@@ -372,7 +357,7 @@ class PayApi {
                         ];
                     }
                     else {
-                        error_log("ignored ".$date.' '.$p->Amount.' '.$p->Status);
+                        //error_log("ignored ".$date.' '.$p->Amount.' '.$p->Status);
                     }
                 } else {
                     error_log("Mandate:\n".print_r($m, true));
@@ -741,7 +726,7 @@ $c = [
 ];
 */
             // Payment GUID is unique
-            // Do nothing on duplicate key
+            // Update Status on duplicate key
             foreach ($c as $k=>$v) {
                 $esc[$k] = $this->connection->real_escape_string ($v);
             }
@@ -769,6 +754,27 @@ $c = [
                 throw new \Exception ("API insert collection '{$m['ClientRef']}-{$c["payment_guid"]}' failed: ".$e->getMessage());
                 return false;
             }
+        }
+    }
+
+    private function mandate_details ($cref,$fields) {  // array of field names
+        $cref = $this->connection->real_escape_string($cref);
+
+        $selectstring = "`".implode("`,`",$fields)."`";
+        $sql = "
+          SELECT
+            ".$selectstring."
+          FROM `paysuite_mandate`
+          WHERE `ClientRef`='$cref'
+        ";
+        try {
+            $result = $this->connection->query ($sql);
+            return $result->fetch_assoc(); // up to caller to handle empty array.  Might be (semi-)expected
+        }
+        catch (\mysqli_sql_exception $e) {
+            $this->error_log (124,'SQL execute failed: '.$e->getMessage());
+            throw new \Exception ('SQL execution error '.$sql);
+            return false;
         }
     }
 
@@ -833,7 +839,7 @@ $c = [
             // The API created the mandate but other processes did not complete
             return false;
         }
-        if ($db_live) {
+        if ($db_live) { // build mandate(s) handled in insert_mandate and above
             // Insert the live internal mandate
             $sql = "
               INSERT INTO `$db_live`.`paysuite_mandate`
@@ -872,34 +878,82 @@ $c = [
     }
 
 
-    public function player_modify ($m)  {
-        /*
-        TODO
-        if either FF or the org has been asked to change the mandate by the supporter
-        and the amount and frequency are unchanged (ie we need to keep the DDI but need alter sort code, account number and/or account name)
-        then call this method from core function update() to make it happen through the API
-        admins going the to blotto_bacs table to process these requests manually is not sustainable
+    public function player_modify ($cref,$name,$sortcode,$account,$db_live=null) {
+        $details = $this->mandate_details ($cref,['CustomerGuid']);
+        $CustomerGuid = $details['CustomerGuid'];
+        if (!$CustomerGuid) {
+            $this->error_log (128,'Update mandate failed: could not find contractguid for '.$cref);
+            return false;
+        }
+        $patchdetails = [];
+        if ($name) {
+            $patchdetails["AccountHolderName"] = $name;
+        }
+        if ($sortcode) {
+            $patchdetails["BankSortCode"] = $sortcode;
+        }
+        if ($account) {
+            $patchdetails["AccountNumber"] = $account;
+        }
+        if (!count($patchdetails)) {
+            $this->error_log (129,'Update mandate failed: no new details');
+            return false;
+        }
+        try {
+            $response = $this->curl_patch ("customer/{$CustomerGuid}", $patchdetails);
+        }
+        catch (\Exception $e) {
+            $this->error_log (129,'Update mandate failed: '.$e->getMessage());
+            throw new \Exception ('Update mandate error');
+            return false;
+        }
+        if (!isset($response->Message)) { 
+            return $response;
+        }
+        if ($response->Message!='Customer updated') {
+            return $response->Message.' '.$response->Detail;
+        }
 
-        "also I am not sure they even get an email that says they have to do this any more" - DL: they do. Have checked logs.
-
-        normally these details will get amended by the banks when he supporter changes account
-        but if we are asked to do this I believe we are not allowed to assume anything so we must act on the data
-        */
-
-        /* procedure
-        Inputs: clientref (mandatory), name, sortcode, account (optional)
-        Fetch customerguid from paysuite_mandates
-        $patchdetails = [
-            "AccountNumber" => "82345671",
-            "BankSortCode" => "823456",
-            "AccountHolderName" => "J bloggs",
-        ];
-        $r = $this->curl_patch('customer/3a02c36f-65dd-4569-ad7f-f7d420d56cdd', $patchdetails);
+        /*      
         update paysuite_mandate, blotto_build_mandate on live and make databases if success
         email to confirm change.
-
         */
+        $crf = $this->connection->real_escape_string ($cref);
+        $crf = $this->connection->real_escape_string ($name);
+        $crf = $this->connection->real_escape_string ($sortcode);
+        $crf = $this->connection->real_escape_string ($account);
+        $updatestring = "SET `Name` = '{$name}', `Sortcode` = '{$sortcode}', `Account` = '{$account}' WHERE `ClientRef` = '{$cref}'";
 
+        $pst_sql = "UPDATE `paysuite_mandate` ".$updatestring;
+        $bbm_sql = "UPDATE `".PST_TABLE_MANDATE."` ".$updatestring;
+        try {
+            $this->connection->query ($pst_sql);
+            $this->connection->query ($bbm_sql);
+        }
+        catch (\mysqli_sql_exception $e) {
+            $this->error_log (130,'After API mandate update, update build tables failed: '.$e->getMessage());
+            throw new \Exception ('SQL error '.$e->getMessage());
+            // The API modified the mandate but other processes did not complete
+            return false;
+        }
+
+        if($db_live) {
+            $pst_sql = "UPDATE `$db_live`.`paysuite_mandate` ".$updatestring;
+            $bbm_sql = "UPDATE `$db_live`.`".PST_TABLE_MANDATE."` ".$updatestring;
+            try {
+                $this->connection->query ($pst_sql);
+                $this->connection->query ($bbm_sql);
+            }
+            catch (\mysqli_sql_exception $e) {
+                $this->error_log (133,'After API mandate update, update live tables failed: '.$e->getMessage());
+                throw new \Exception ('SQL error '.$e->getMessage());
+                // The API modified the mandate but other processes did not complete
+                return false;
+            }
+
+        }
+
+        return 'OK';
     }
 
 
@@ -1197,29 +1251,6 @@ $c = [
         }
     }
 
-    private function update_status ($m) {
-        $r = $this->curl_get ('customer/'.$m['CustomerGuid'].'/contract');
-        if (isset($r->Contracts)) {
-            foreach ($r->Contracts as $c) { // should be only one
-                if ($c->Id == $m['ContractGuid']) { //DL: add $c->Status != 'Active' if only Active mandates are being queried as above
-                    $status = $this->connection->real_escape_string($c->Status);
-                    $failreason = ($c->StatusExplanation == 'N/A') ? '' : $this->connection->real_escape_string($c->StatusExplanation);
-                    // TODO only do this if something has changed!
-                    // TODO also change amount (etc.)
-                    $q = "UPDATE `paysuite_mandate` SET `Status` = '{$status}', `FailReason` = '{$failreason}' WHERE `MandateId` = {$m['MandateId']}";
-                    try {
-                        $this->connection->query ($q);
-                    }
-                    catch (\mysqli_sql_exception $e) {
-                        $this->error_log (102,'SQL update failed: '.$e->getMessage());
-                        throw new \Exception ('SQL insert error');
-                        return false;
-                    }
-                }
-            }
-        }
-    }
-
     // TODO (maybe) if we got all customer details in one go we could avoid multiple curl calls
     // which would speed things up
     private function update_account_details ($m) {
@@ -1247,6 +1278,32 @@ $c = [
             }
         }
     }
+
+    private function update_status ($m) {
+        $r = $this->curl_get ('customer/'.$m['CustomerGuid'].'/contract');
+        $status = 'Inactive';
+        $failreason = 'API could not find contract, so assume Inactive';
+        if (isset($r->Contracts)) {
+            foreach ($r->Contracts as $c) { // should be only one
+                if ($c->Id == $m['ContractGuid']) { //DL: add $c->Status != 'Active' if only Active mandates are being queried as above
+                    $status = $this->connection->real_escape_string($c->Status);
+                    $failreason = ($c->StatusExplanation == 'N/A') ? '' : $this->connection->real_escape_string($c->StatusExplanation);
+                }
+            }
+        }
+        // TODO only do this if something has changed!
+        // TODO also change amount (etc.)
+        $q = "UPDATE `paysuite_mandate` SET `Status` = '{$status}', `FailReason` = '{$failreason}' WHERE `MandateId` = {$m['MandateId']}";
+        try {
+            $this->connection->query ($q);
+        }
+        catch (\mysqli_sql_exception $e) {
+            $this->error_log (102,'SQL update failed: '.$e->getMessage());
+            throw new \Exception ('SQL insert error');
+            return false;
+        }
+    }
+
 
     // test functions all at end
     private function test_callback() {
