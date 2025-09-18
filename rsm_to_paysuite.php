@@ -101,7 +101,7 @@ echo $message."\n";
         exit (104);
     }
     if ($rehearse) {
-        echo "JUST REHEARSING - FIRST MANDATE LOOKS LIKE THIS: ";
+        echo "JUST REHEARSING - FIRST MANDATE OF ".count($mandates)." LOOKS LIKE THIS: ";
         print_r ($mandates[0]);
         echo "\n";
     }
