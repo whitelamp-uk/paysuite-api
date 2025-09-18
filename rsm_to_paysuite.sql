@@ -60,7 +60,7 @@ ORDER BY `DDRefOrig`
 -- collections (slow)
 
 -- get rid of last attempt
-DROP TABLE IF EXISTS `paysuite_mandate_test`
+DROP TABLE IF EXISTS `paysuite_collection_test`
 ;
 -- copy a data structure, say BWH
 CREATE TABLE `paysuite_collection_test` LIKE `crucible2_bwh_make`.`paysuite_collection`
