@@ -2,9 +2,11 @@
 
 
 -- mandates
+set foreign_key_checks = 0;
+
 
 -- get rid of last attempt
-DROP TABLE IF EXISTS `paysuite_collection_test`
+DROP TABLE IF EXISTS `paysuite_mandate_test`
 ;
 -- copy a data structure, say BWH
 CREATE TABLE `paysuite_mandate_test` LIKE `crucible2_bwh_make`.`paysuite_mandate`
@@ -43,13 +45,27 @@ SELECT
   )
  ,`ClientRef`
  ,`Name`
- ,`Sortcode`
+ ,CONCAT(
+    SUBSTR(`Sortcode`,1,2)
+   ,'-'
+   ,SUBSTR(`Sortcode`,3,2)
+   ,'-'
+   ,SUBSTR(`Sortcode`,5,2)
+  )
  ,`Account`
  ,`StartDate`
  ,`Freq`
  ,`Amount`
- ,`ChancesCsv`
- ,`Status`
+ ,IF(
+    `Freq`='Annually'
+   ,ROUND(`Amount`/60)
+   ,ROUND(`Amount`/5)
+  )
+ ,IF(
+    `Status`='LIVE'
+   ,'Active'
+   ,'Inactive'
+  )
  ,`FailReason`
 FROM `rsm_mandate`
 WHERE `IsCurrent`>0 -- RSM quirk but get all players
