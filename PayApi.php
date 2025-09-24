@@ -426,10 +426,11 @@ class PayApi {
         //return;
         $from               = new \DateTime ($from);
         $this->from         = $from->format ('Y-m-d');
-        // Get all the mandates //DL: using AND `Status` = 'Active' makes it much faster...
-        $restrict = '';
+        // Get mandates, ignoring legacy imports
+        $restrict = " AND `CustomerGuid` != `ClientRef` ";
+        //DL: go fast on weekdays
         if (date('l') != 'Sunday') { 
-            $restrict = "AND (`Status` = 'Active' OR `Updated` > DATE_SUB(CURDATE(),INTERVAL 60 DAY))";
+            $restrict .= " AND (`Status` = 'Active' OR `Updated` > DATE_SUB(CURDATE(),INTERVAL 60 DAY))";
         }
 
         $sql = "
@@ -877,7 +878,7 @@ $c = [
         return true;
     }
 
-
+    // TODO return error strings
     public function player_modify ($cref,$name,$sortcode,$account,$db_live=null) {
         $details = $this->mandate_details ($cref,['CustomerGuid']);
         $CustomerGuid = $details['CustomerGuid'];
@@ -1290,6 +1291,9 @@ $c = [
                     $failreason = ($c->StatusExplanation == 'N/A') ? '' : $this->connection->real_escape_string($c->StatusExplanation);
                 }
             }
+        }
+        if ($status == $m['Status']) {
+            return true; // NB return value not used.
         }
         // TODO only do this if something has changed!
         // TODO also change amount (etc.)
