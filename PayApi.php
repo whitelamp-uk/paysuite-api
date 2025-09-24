@@ -426,13 +426,14 @@ class PayApi {
         //return;
         $from               = new \DateTime ($from);
         $this->from         = $from->format ('Y-m-d');
-        // Get mandates, ignoring legacy imports
-        $restrict = " AND `CustomerGuid` != `ClientRef` ";
-        //DL: go fast on weekdays
+
+        //DL: go fast on weekdays by only querying Active or recently updated mandates
+        $restrict = '';
         if (date('l') != 'Sunday') { 
-            $restrict .= " AND (`Status` = 'Active' OR `Updated` > DATE_SUB(CURDATE(),INTERVAL 60 DAY))";
+            $restrict = " AND (`Status` = 'Active' OR `Updated` > DATE_SUB(CURDATE(),INTERVAL 60 DAY))";
         }
 
+        // Get mandates, ignoring legacy imports where CustomerGuid imported from ClientRef
         $sql = "
           SELECT
             `MandateId`
@@ -441,6 +442,7 @@ class PayApi {
            ,`ClientRef`
           FROM `paysuite_mandate`
           WHERE DATE(`MandateCreated`)>='{$this->from}'
+          AND `CustomerGuid` != `ClientRef`
           ". $restrict ."
           ORDER BY `MandateId`
         ";
@@ -490,7 +492,8 @@ class PayApi {
                 $result = $this->connection->query ($sql);
                 if ($this->connection->affected_rows!=1) {
                     $this->error_log (122,"API update mandate [1] '{$m['ClientRef']}' - no affected rows");
-                    throw new \Exception ("API update mandate [1] '{$m['ClientRef']}' - no affected rows");
+                    throw new \Exception ("API update m
+                        andate [1] '{$m['ClientRef']}' - no affected rows");
                     return false;
                 }
             }
