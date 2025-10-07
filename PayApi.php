@@ -472,9 +472,8 @@ class PayApi {
     }
 
     public function info ( ) {
-        $schedules = $this->curl_get ('schedules');
         $info = [
-            'schedules' => $schedules->Services[0]->Schedules
+            'info_schedules' => $this->curl_get ('schedules')
         ];
         return $info;
     }
