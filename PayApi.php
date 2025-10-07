@@ -471,6 +471,14 @@ class PayApi {
         error_log('Paysuite status and type combos: '.print_r($this->status_types, true));
     }
 
+    public function info ( ) {
+        $schedules = $this->curl_get ('schedules');
+        $info = [
+            'schedules' => $schedules->Services[0]->Schedules
+        ];
+        return $info;
+    }
+
     private function insert_mandate (&$m)  {
         // Customer ( == player )
         if (!array_key_exists('CustomerGuid',$m) || !$m['CustomerGuid']) {
