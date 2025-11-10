@@ -1,10 +1,20 @@
 <?php
 
 /*
+Make sure Paysuite have disabled compulsory email!
 first use rsm_to_paysuite.sql to
  * recreate paysuite_mandate containing data from rsm_mandate
  * recreate paysuite_collection containing data from rsm_collection
  * recreate paysuite_transfer_supporter containing data to then be used by this script
+ * Check that Statuses are either Active or Inactive
+ * Check that there is at least something in address_1, towen, and postcode.
+ * "Placeholder" and "XY1 1ZZ" should do.
+ * Since SHC there is now a TRIM() on the email address to deal with trailing spaces.
+ * And a REPLACE to switch '~' to '-'
+ * There is now a Status of 'in_pst' which should suppress the "invalid index"  warning
+ * Once everything in paysuite_mandate is either "in_pst" or "Inactive" update in_pst -> Active
+ * crucible_ticket_zaffo.blotto_ticket needs updating with new ddref and mandate provider
+
 */
 
 // then configure
@@ -14,9 +24,7 @@ $cfg = '/opt/crucible/config/shc.cfg.php';
 $org = 'shc';
 
 // rehearse to just echo stuff
-$rehearse = true;
-
-
+$rehearse = false;
 
 // then this script gets run
 
@@ -24,7 +32,6 @@ $rehearse = true;
 require $apf;
 require $fns;
 require $cfg;
-
 
 
 // this is adapted (simplified) from payment_mandate.php
@@ -38,63 +45,12 @@ if (!$zo) {
 try {
     $mandate_count  = 0;
     $bad = $good = $tooearly = $toolate = 0;
-/*
-    if (method_exists($api,'reset_fakes')) {
-        // Migrating mandates
-        $api->reset_fakes ();
-    }
-*/
     // Get new candidates
     $mandates = [];
-    $select = BLOTTO_PAY_API_PST_SELECT;
-    $qs = "
-      SELECT
-        `cand`.*
---      FROM `tmp_supporter` AS `cand`
-      FROM `paysuite_transfer_supporter` AS `cand`
-      JOIN `blotto_supporter` AS `s`
-        ON `s`.`client_ref`=`cand`.`ClientRef`
-       AND `s`.`mandate_blocked`=0
-      LEFT JOIN (
-        $select
-      ) AS `m`
-        ON `m`.`crf`=`cand`.`ClientRef`
-      -- No mandate exists
-      WHERE `m`.`crf` IS NULL
-        AND (
-             0
-          OR `s`.`inserted`>DATE_SUB(NOW(),INTERVAL $interval)
-      )
-    ";
+    $qs = "SELECT * FROM `paysuite_transfer_supporter`";
     try {
-        $errors = [];
         $ms = $zo->query ($qs);
-        while ($m=$ms->fetch_assoc()) {
-/*
-            if (territory_permitted($m['Postcode'])) {
-                $mandates[] = $m;
-            }
-            else {
-                $e = "Postcode '{$m['Postcode']}' is outside territory '".BLOTTO_TERRITORIES_CSV."' - $ccc - for '{$m['ClientRef']}'\n";
-                fwrite (STDERR,$e);
-                $errors[] = $e;
-            }
-*/
-// instead
-            $mandates[] = $m;
-        }
-        if ($count=count($errors)) {
-            $message = "The following $count mandates have been rejected:\n";
-            foreach ($errors as $e) {
-                $message .= $e;
-            }
-/*
-            notify (BLOTTO_EMAIL_WARN_TO,"$count rejected mandates",$message);
-*/
-//instead:
-echo $message."\n";
-            $bad += $count;
-        }
+        $mandates = $ms->fetch_all (MYSQLI_ASSOC);
     }
     catch (\mysqli_sql_exception $e) {
         fwrite (STDERR, $qs."\n".$zo->error."\n");
@@ -107,10 +63,11 @@ echo $message."\n";
     }
     else {
 echo "DRAGONS - COMMENT ME OUT IF YOU DARE!\n";
-//        $api->insert_mandates ($mandates,$bad,$good,$tooearly,$toolate);
+        $api = new \Blotto\Paysuite\PayApi($zo);
+        $api->insert_mandates ($mandates,$bad,$good,$tooearly,$toolate);
     }
     $mandate_count += count ($mandates);
-    echo "    Processed $mandate_count mandates using $class\n        $good good, $bad bad";
+    echo "    Processed $mandate_count mandates\n        $good good, $bad bad";
     if ($tooearly>0) {
         echo ", $tooearly too early";
     }
@@ -127,3 +84,4 @@ catch (\Exception $e) {
     exit ($api->errorCode);
 }
 
+echo "\n";

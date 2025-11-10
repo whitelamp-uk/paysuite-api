@@ -1,5 +1,25 @@
 
+/*
 
+After everything else is done and these need fixing
+
+update blotto_ticket
+set mandate_provider='PST'
+where org_id=???
+
+
+update crucible_ticket_zaffo.blotto_ticket as t
+join blotto_build_mandate as m
+  on m.ClientRef=t.client_ref
+set
+  t.mandate_provider='PST'
+ ,t.dd_ref_no=m.RefNo
+where t.org_id=???
+
+
+
+
+*/
 
 -- mandates
 set foreign_key_checks = 0;
@@ -142,7 +162,7 @@ SELECT
  ,GROUP_CONCAT(`c`.`name_first` ORDER BY `c`.`id` DESC LIMIT 1) AS `NamesGiven`
  ,GROUP_CONCAT(`c`.`name_last` ORDER BY `c`.`id` DESC LIMIT 1) AS `NamesFamily`
  ,0 AS `EasternOrder`
- ,GROUP_CONCAT(`c`.`email` ORDER BY `c`.`id` DESC LIMIT 1) AS `Email`
+ ,REPLACE(TRIM(GROUP_CONCAT(`c`.`email` ORDER BY `c`.`id` DESC LIMIT 1)), '~', '-') AS `Email`
  ,GROUP_CONCAT(`c`.`address_1` ORDER BY `c`.`id` DESC LIMIT 1) AS `AddressLine1`
  ,GROUP_CONCAT(`c`.`address_2` ORDER BY `c`.`id` DESC LIMIT 1) AS `AddressLine2`
  ,GROUP_CONCAT(`c`.`address_3` ORDER BY `c`.`id` DESC LIMIT 1) AS `AddressLine3`
@@ -150,6 +170,7 @@ SELECT
  ,GROUP_CONCAT(`c`.`county` ORDER BY `c`.`id` DESC LIMIT 1) AS `County`
  ,GROUP_CONCAT(`c`.`postcode` ORDER BY `c`.`id` DESC LIMIT 1) AS `Postcode`
  ,GROUP_CONCAT(`c`.`country` ORDER BY `c`.`id` DESC LIMIT 1) AS `Country`
+ ,'in_pst' AS `Status`
 FROM `paysuite_mandate_test` AS `m`
 JOIN `blotto_player` AS `p`
   ON `p`.`client_ref`=`m`.`ClientRef`
