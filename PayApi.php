@@ -518,14 +518,16 @@ class PayApi {
                 throw new \Exception ("Cannot complete mandate {$m['ClientRef']} without contract GUID");
                 return false;
             }
-            // TODO Status sometimes undefined
+            if (!array_key_exists('Status',$m)) { // squash php warning of undefined key
+                $m['Status'] = '';
+            }
             $sql = "
               UPDATE `paysuite_mandate`
               SET
-                `ContractGuid`='{$m["ContractGuid"]}'
-               ,`DDRefOrig`='{$m["DDRefOrig"]}'
-               ,`Status` = '{$m["Status"]}' 
-               ,`FailReason` = '{$m["FailReason"]}'
+                `ContractGuid`='{$m['ContractGuid']}'
+               ,`DDRefOrig`='{$m['DDRefOrig']}'
+               ,`Status` = '{$m['Status']}' 
+               ,`FailReason` = '{$m['FailReason']}'
               WHERE `ClientRef`='{$m['ClientRef']}'
               LIMIT 1
               ;
